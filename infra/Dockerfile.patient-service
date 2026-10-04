@@ -1,0 +1,17 @@
+FROM gradle:8.14.3-jdk17 AS build
+
+WORKDIR /workspace
+
+COPY . .
+
+RUN ./gradlew :services:patient-service:bootJar --no-daemon
+
+FROM eclipse-temurin:17-jre
+
+WORKDIR /app
+
+COPY --from=build /workspace/services/patient-service/build/libs/*.jar app.jar
+
+EXPOSE 8082
+
+ENTRYPOINT ["java", "-jar", "app.jar"]

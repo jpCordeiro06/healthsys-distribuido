@@ -1,0 +1,74 @@
+services:
+  api-gateway:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.api-gateway
+    container_name: healthsys-api-gateway
+    ports:
+      - '8080:8080'
+    networks:
+      - healthsys-network
+
+  user-service:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.user-service
+    container_name: healthsys-user-service
+    ports:
+      - '8081:8081'
+    networks:
+      - healthsys-network
+
+  patient-service:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.patient-service
+    container_name: healthsys-patient-service
+    ports:
+      - '8082:8082'
+    networks:
+      - healthsys-network
+
+  medical-record-service:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.medical-record-service
+    container_name: healthsys-medical-record-service
+    ports:
+      - '8083:8083'
+    networks:
+      - healthsys-network
+
+  triage-service:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.triage-service
+    container_name: healthsys-triage-service
+    ports:
+      - '8084:8084'
+    networks:
+      - healthsys-network
+
+  notification-service:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.notification-service
+    container_name: healthsys-notification-service
+    ports:
+      - '8085:8085'
+    networks:
+      - healthsys-network
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.frontend
+    container_name: healthsys-frontend
+    ports:
+      - '3000:80'
+    networks:
+      - healthsys-network
+
+networks:
+  healthsys-network:
+    driver: bridge
