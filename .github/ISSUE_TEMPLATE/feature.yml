@@ -1,0 +1,35 @@
+name: Funcionalidade
+description: Propor uma nova funcionalidade
+title: "[FEAT] "
+labels: ["feature"]
+body:
+  - type: textarea
+    id: objetivo
+    attributes:
+      label: Objetivo
+      description: Que problema esta funcionalidade resolve?
+    validations:
+      required: true
+  - type: textarea
+    id: criterios
+    attributes:
+      label: Critérios de aceitação
+      placeholder: "- [ ] Dado... quando... então..."
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options:
+        - API Gateway
+        - Usuários
+        - Pacientes
+        - Prontuários
+        - Triagem
+        - Notificações
+        - Frontend
+        - Infraestrutura
+        - Documentação
+    validations:
+      required: true

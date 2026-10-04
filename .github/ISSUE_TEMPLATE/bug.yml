@@ -1,0 +1,24 @@
+name: Erro
+description: Relatar um comportamento incorreto
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: descricao
+    attributes:
+      label: Descrição
+      description: Explique o que aconteceu e o comportamento esperado.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduzir
+    attributes:
+      label: Passos para reproduzir
+      placeholder: "1. Inicie...\n2. Acesse...\n3. Observe..."
+    validations:
+      required: true
+  - type: textarea
+    id: evidencias
+    attributes:
+      label: Evidências e ambiente
+      description: Inclua logs sem credenciais ou dados de pacientes.
