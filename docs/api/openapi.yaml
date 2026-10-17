@@ -1,0 +1,637 @@
+openapi: 3.0.3
+info:
+  title: HealthSys Distribuido API
+  version: 1.0.0
+  description: >-
+    Contrato inicial da API REST para autenticacao, usuarios e pacientes.
+    A API e acessada pelo API Gateway.
+servers:
+  - url: http://localhost:8080
+    description: Ambiente local via API Gateway
+tags:
+  - name: Autenticacao
+  - name: Usuarios
+  - name: Pacientes
+paths:
+  /api/v1/auth/login:
+    post:
+      tags: [Autenticacao]
+      summary: Autenticar usuario
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Credenciais validas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Email ou senha invalidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                codigo: CREDENCIAIS_INVALIDAS
+                mensagem: Email ou senha invalidos.
+                campos: {}
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/users:
+    post:
+      tags: [Usuarios]
+      summary: Cadastrar usuario
+      operationId: createUser
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+      responses:
+        '201':
+          description: Usuario cadastrado
+          headers:
+            Location:
+              description: URL do usuario criado
+              schema:
+                type: string
+                example: /api/v1/users/56e48188-85f0-4e4d-99cb-e67211c67d88
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Email ja cadastrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                codigo: EMAIL_JA_CADASTRADO
+                mensagem: Ja existe um usuario com este email.
+                campos:
+                  email: [Este email ja esta em uso.]
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags: [Usuarios]
+      summary: Listar usuarios
+      operationId: listUsers
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Pagina de usuarios
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMetadata'
+                  - type: object
+                    properties:
+                      content:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/User'
+              example:
+                content:
+                  - id: 56e48188-85f0-4e4d-99cb-e67211c67d88
+                    nome: Ana Souza
+                    email: ana.souza@hospital.com
+                    perfil: MEDICO
+                page: 0
+                size: 20
+                totalElements: 1
+                totalPages: 1
+                first: true
+                last: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/users/{userId}:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        description: Identificador UUID do usuario
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Usuarios]
+      summary: Consultar usuario
+      operationId: getUser
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Usuario encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      tags: [Usuarios]
+      summary: Atualizar usuario
+      operationId: updateUser
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200':
+          description: Usuario atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Email ja cadastrado para outro usuario
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags: [Usuarios]
+      summary: Excluir usuario
+      operationId: deleteUser
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Usuario excluido
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/patients:
+    post:
+      tags: [Pacientes]
+      summary: Cadastrar paciente
+      operationId: createPatient
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientRequest'
+      responses:
+        '201':
+          description: Paciente cadastrado
+          headers:
+            Location:
+              description: URL do paciente criado
+              schema:
+                type: string
+                example: /api/v1/patients/1d00f42f-f0e5-4e11-92b5-6cfaed28e326
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags: [Pacientes]
+      summary: Listar pacientes
+      operationId: listPatients
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Pagina de pacientes
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMetadata'
+                  - type: object
+                    properties:
+                      content:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Patient'
+              example:
+                content:
+                  - id: 1d00f42f-f0e5-4e11-92b5-6cfaed28e326
+                    nome: Joao da Silva
+                    dataNascimento: '1985-04-12'
+                    sexo: M
+                    telefone: '+55 85 99999-0000'
+                page: 0
+                size: 20
+                totalElements: 1
+                totalPages: 1
+                first: true
+                last: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/patients/{patientId}:
+    parameters:
+      - name: patientId
+        in: path
+        required: true
+        description: Identificador UUID do paciente
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Pacientes]
+      summary: Consultar paciente
+      operationId: getPatient
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Paciente encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      tags: [Pacientes]
+      summary: Atualizar paciente
+      operationId: updatePatient
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientRequest'
+      responses:
+        '200':
+          description: Paciente atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags: [Pacientes]
+      summary: Excluir paciente
+      operationId: deletePatient
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Paciente excluido
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Page:
+      name: page
+      in: query
+      required: false
+      description: Indice da pagina, comeca em zero.
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      required: false
+      description: Quantidade de itens por pagina, entre 1 e 100.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Sort:
+      name: sort
+      in: query
+      required: false
+      description: Campo e direcao; pode ser repetido. Exemplo sort=nome,asc.
+      schema:
+        type: string
+        example: nome,asc
+  schemas:
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, senha]
+      properties:
+        email:
+          type: string
+          format: email
+          example: ana.souza@hospital.com
+        senha:
+          type: string
+          format: password
+          writeOnly: true
+          example: SenhaSegura123
+    LoginResponse:
+      type: object
+      required: [accessToken, tokenType, expiresIn, usuario]
+      properties:
+        accessToken:
+          type: string
+          description: JWT usado no cabecalho Authorization.
+        tokenType:
+          type: string
+          enum: [Bearer]
+        expiresIn:
+          type: integer
+          format: int64
+          description: Validade do token em segundos.
+        usuario:
+          $ref: '#/components/schemas/User'
+    UserCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [nome, perfil, email, senha]
+      properties:
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 120
+        perfil:
+          type: string
+          minLength: 1
+          description: Perfil de acesso conforme os perfis configurados pela aplicacao.
+          example: MEDICO
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        senha:
+          type: string
+          format: password
+          writeOnly: true
+          minLength: 8
+          maxLength: 128
+    UserUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [nome, perfil, email]
+      properties:
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 120
+        perfil:
+          type: string
+          minLength: 1
+          description: Perfil de acesso conforme os perfis configurados pela aplicacao.
+          example: MEDICO
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        senha:
+          type: string
+          format: password
+          writeOnly: true
+          minLength: 8
+          maxLength: 128
+          description: Opcional; quando enviado, substitui a senha atual.
+    User:
+      type: object
+      required: [id, nome, perfil, email]
+      properties:
+        id:
+          type: string
+          format: uuid
+        nome:
+          type: string
+        perfil:
+          type: string
+        email:
+          type: string
+          format: email
+    PatientRequest:
+      type: object
+      additionalProperties: false
+      required: [nome, dataNascimento, sexo]
+      properties:
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 150
+        dataNascimento:
+          type: string
+          format: date
+        sexo:
+          type: string
+          minLength: 1
+          maxLength: 30
+          description: Valor informado conforme as opcoes adotadas pela instituicao.
+          example: M
+        telefone:
+          type: string
+          maxLength: 30
+          nullable: true
+    Patient:
+      allOf:
+        - $ref: '#/components/schemas/PatientRequest'
+        - type: object
+          required: [id]
+          properties:
+            id:
+              type: string
+              format: uuid
+    PageMetadata:
+      type: object
+      required: [content, page, size, totalElements, totalPages, first, last]
+      properties:
+        content:
+          type: array
+          items: {}
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+        first:
+          type: boolean
+        last:
+          type: boolean
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [codigo, mensagem, campos]
+      properties:
+        codigo:
+          type: string
+          description: Codigo estavel para tratamento programatico pelo cliente.
+          example: VALIDACAO
+        mensagem:
+          type: string
+          example: Existem campos invalidos.
+        campos:
+          type: object
+          description: Mapa de nome do campo para lista de mensagens de validacao.
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            nome: [O nome e obrigatorio.]
+    
+  responses:
+    BadRequest:
+      description: Requisicao invalida ou falha de validacao
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            codigo: VALIDACAO
+            mensagem: Existem campos invalidos.
+            campos:
+              email: [Informe um email valido.]
+    Unauthorized:
+      description: Token ausente, invalido ou expirado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            codigo: NAO_AUTENTICADO
+            mensagem: Autenticacao necessaria ou token invalido.
+            campos: {}
+    Forbidden:
+      description: Usuario autenticado sem permissao para a operacao
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            codigo: ACESSO_NEGADO
+            mensagem: Voce nao tem permissao para esta operacao.
+            campos: {}
+    NotFound:
+      description: Recurso nao encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            codigo: NAO_ENCONTRADO
+            mensagem: O recurso solicitado nao foi encontrado.
+            campos: {}
+    InternalServerError:
+      description: Erro inesperado no servidor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            codigo: ERRO_INTERNO
+            mensagem: Ocorreu um erro inesperado.
+            campos: {}

@@ -28,6 +28,10 @@ healthsys-distribuido/
 
 Os serviços possuem apenas a classe principal, configuração mínima e dependências básicas. Bancos, mensageria, regras de negócio, autenticação e integração serão adicionados pelas respectivas frentes.
 
+## Contrato da API REST
+
+O contrato inicial de autenticação, usuários e pacientes está documentado em [OpenAPI](docs/api/openapi.yaml). Ele define payloads JSON, autenticação JWT, respostas de erro e paginação para orientar o desenvolvimento independente do frontend e dos serviços.
+
 ## Pré-requisitos
 
 - Git
