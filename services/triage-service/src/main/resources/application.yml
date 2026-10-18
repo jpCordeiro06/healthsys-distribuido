@@ -10,3 +10,8 @@ management:
     web:
       exposure:
         include: health,info
+
+healthsys:
+  security:
+    jwt:
+      public-key: ${HEALTHSYS_SECURITY_JWT_PUBLIC_KEY:}

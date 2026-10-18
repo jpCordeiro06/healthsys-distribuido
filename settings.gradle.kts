@@ -1,6 +1,7 @@
 rootProject.name = "healthsys-distribuido"
 
 include(
+    "shared:security",
     "services:api-gateway",
     "services:user-service",
     "services:patient-service",
