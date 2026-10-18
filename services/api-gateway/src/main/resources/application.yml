@@ -1,6 +1,40 @@
 spring:
   application:
     name: api-gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: user-service
+              uri: ${HEALTHSYS_USER_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/v1/auth/**,/api/v1/users,/api/v1/users/**
+            - id: patient-service
+              uri: ${HEALTHSYS_PATIENT_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/v1/patients,/api/v1/patients/**
+          globalcors:
+            add-to-simple-url-handler-mapping: true
+            cors-configurations:
+              '[/**]':
+                allowed-origins:
+                  - http://localhost:3000
+                  - http://localhost:5173
+                allowed-methods:
+                  - GET
+                  - POST
+                  - PUT
+                  - PATCH
+                  - DELETE
+                  - OPTIONS
+                allowed-headers:
+                  - Authorization
+                  - Content-Type
+                  - Accept
+                exposed-headers:
+                  - Location
+                max-age: 3600
 
 server:
   port: ${SERVER_PORT:8080}
@@ -8,5 +42,16 @@ server:
 management:
   endpoints:
     web:
+      cors:
+        allowed-origins:
+          - http://localhost:3000
+          - http://localhost:5173
+        allowed-methods:
+          - GET
+          - OPTIONS
+        allowed-headers:
+          - Authorization
+          - Content-Type
+          - Accept
       exposure:
         include: health,info

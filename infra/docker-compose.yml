@@ -4,6 +4,9 @@ services:
       context: ..
       dockerfile: infra/Dockerfile.api-gateway
     container_name: healthsys-api-gateway
+    environment:
+      HEALTHSYS_USER_SERVICE_URL: http://user-service:8081
+      HEALTHSYS_PATIENT_SERVICE_URL: http://patient-service:8082
     ports:
       - '8080:8080'
     networks:
@@ -73,6 +76,8 @@ services:
     build:
       context: ..
       dockerfile: infra/Dockerfile.frontend
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080/api/v1}
     container_name: healthsys-frontend
     ports:
       - '3000:80'

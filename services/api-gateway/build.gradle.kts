@@ -7,5 +7,5 @@ configure<DependencyManagementExtension> {
 }
 
 dependencies {
-    implementation("org.springframework.cloud:spring-cloud-starter-gateway")
+    implementation("org.springframework.cloud:spring-cloud-starter-gateway-server-webflux")
 }
