@@ -28,3 +28,7 @@ frontend/vite.config.d.ts
 # Logs e relatórios
 *.log
 coverage/
+
+# Local development secrets
+/secrets/
+/infra/.env

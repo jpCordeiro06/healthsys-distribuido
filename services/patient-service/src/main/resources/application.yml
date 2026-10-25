@@ -1,6 +1,17 @@
 spring:
   application:
     name: patient-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/healthsys}
+    username: ${SPRING_DATASOURCE_USERNAME:healthsys}
+    password: ${SPRING_DATASOURCE_PASSWORD:healthsys}
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
 
 server:
   port: ${SERVER_PORT:8082}
