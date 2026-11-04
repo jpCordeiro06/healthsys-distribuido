@@ -3,7 +3,6 @@ package br.edu.healthsys.user.controller;
 import br.edu.healthsys.user.domain.User;
 import br.edu.healthsys.user.dto.LoginRequest;
 import br.edu.healthsys.user.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
@@ -17,7 +16,7 @@ import java.util.Base64;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/v1/auth")
 public class AuthController {
 
     private final UserRepository userRepository;
@@ -29,7 +28,7 @@ public class AuthController {
         UserRepository userRepository,
         PasswordEncoder passwordEncoder,
         JwtEncoder jwtEncoder,
-        @Value("${rsa.public-key}") RSAPublicKey publicKey) {
+        RSAPublicKey publicKey) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtEncoder = jwtEncoder;
