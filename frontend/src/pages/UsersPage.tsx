@@ -221,7 +221,7 @@ export function UsersPage({ session, service, onExpired }: Props) {
             <p>
               {data.totalElements === 0
                 ? 'Nenhum registro'
-                : `${data.page * data.size + 1}–${data.page * data.size + data.content.length} de ${data.totalElements} registros`}
+                : `${data.number * data.size + 1}–${data.number * data.size + data.content.length} de ${data.totalElements} registros`}
             </p>
             <div className="pagination-controls">
               <button
@@ -234,7 +234,7 @@ export function UsersPage({ session, service, onExpired }: Props) {
                 <Icon name="chevron" size={17} />
               </button>
               <span>
-                Página {data.totalPages === 0 ? 0 : data.page + 1} de {data.totalPages}
+                Página {data.totalPages === 0 ? 0 : data.number + 1} de {data.totalPages}
               </span>
               <button
                 type="button"

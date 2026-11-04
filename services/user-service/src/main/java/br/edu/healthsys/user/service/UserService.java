@@ -4,12 +4,17 @@ import br.edu.healthsys.user.domain.User;
 import br.edu.healthsys.user.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class UserService {
+    private static final Set<String> SORT_FIELDS = Set.of("id", "nome", "email", "perfil");
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -27,8 +32,14 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    public List<User> findAll() {
-        return userRepository.findAll();
+    public Page<User> findAll(Pageable pageable) {
+        for (var order : pageable.getSort()) {
+            if (!SORT_FIELDS.contains(order.getProperty())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Campo de ordenação inválido. Use id, nome, email ou perfil.");
+            }
+        }
+        return userRepository.findAll(pageable);
     }
 
     public User findById(UUID id) {
