@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
 import { createUsersService } from './services/users'
+import { createPatientsService } from './services/patients'
+import { PatientsPage } from './pages/PatientsPage'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { AppLayout } from './components/AppLayout'
 import { LoginPage } from './pages/LoginPage'
 import { UsersPage } from './pages/UsersPage'
-import { createDemoSession, createDemoUsersService, demoEnabled } from './services/demo'
-import type { UsersService, Session } from './types'
+import { createDemoSession, createDemoUsersService, createDemoPatientsService, demoEnabled } from './services/demo'
+import type { UsersService, PatientsService, Session } from './types'
 
 function App() {
-  const [auth, setAuth] = useState<{ session: Session; users: UsersService } | null>(null)
+  const [auth, setAuth] = useState<{ session: Session; users: UsersService; patients: PatientsService } | null>(null)
   const [notice, setNotice] = useState('')
 
   const expireSession = useCallback(() => {
@@ -35,13 +37,13 @@ function App() {
   function signIn(session: Session) {
     if (!session.accessToken) return
     setNotice('')
-    setAuth({ session, users: createUsersService(session.accessToken) })
+    setAuth({ session, users: createUsersService(session.accessToken), patients: createPatientsService(session.accessToken) })
   }
 
   function openDemo() {
     if (!demoEnabled) return
     setNotice('')
-    setAuth({ session: createDemoSession(), users: createDemoUsersService() })
+    setAuth({ session: createDemoSession(), users: createDemoUsersService(), patients: createDemoPatientsService() })
   }
 
   function signOut() {
@@ -67,6 +69,10 @@ function App() {
           <Route
             path="/users"
             element={auth && <UsersPage session={auth.session} service={auth.users} onExpired={expireSession} />}
+          />
+          <Route
+            path="/patients"
+            element={auth && <PatientsPage session={auth.session} service={auth.patients} onExpired={expireSession} />}
           />
         </Route>
         <Route path="*" element={<Navigate to={auth ? '/users' : '/login'} replace />} />

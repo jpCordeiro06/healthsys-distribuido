@@ -55,3 +55,27 @@ export interface UsersService {
   createUser: (data: UserInput) => Promise<User>
   updateUser: (id: string, data: UserUpdateInput) => Promise<User>
 }
+
+
+export interface Patient {
+  id: string
+  nome: string
+  cpf: string
+  dataNascimento: string
+  sexo: string
+  telefone: string | null
+}
+
+export interface PatientInput {
+  nome: string
+  cpf: string
+  dataNascimento: string
+  sexo: string
+  telefone: string
+}
+
+export interface PatientsService {
+  listPatients: (page: number, signal?: AbortSignal) => Promise<Page<Patient>>
+  createPatient: (data: PatientInput) => Promise<Patient>
+  updatePatient: (id: string, data: PatientInput) => Promise<Patient>
+}

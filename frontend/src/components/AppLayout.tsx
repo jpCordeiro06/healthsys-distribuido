@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router'
+import { NavLink, Outlet, useLocation } from 'react-router'
 import { Brand } from './Brand'
 import { Icon } from './Icon'
 import { profileLabels, type Session } from '../types'
@@ -9,6 +9,8 @@ interface Props {
 }
 
 export function AppLayout({ session, onSignOut }: Props) {
+  const { pathname } = useLocation()
+  const title = pathname === '/patients' ? 'Pacientes' : 'Usuários'
   return (
     <div className="app-layout">
       <a
@@ -30,6 +32,11 @@ export function AppLayout({ session, onSignOut }: Props) {
             <span>Usuários</span>
             <Icon name="chevron" size={15} />
           </NavLink>
+          <NavLink to="/patients" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+            <Icon name="cross" />
+            <span>Pacientes</span>
+            <Icon name="chevron" size={15} />
+          </NavLink>
         </nav>
       </aside>
       <div className="workspace">
@@ -37,7 +44,7 @@ export function AppLayout({ session, onSignOut }: Props) {
           <div className="breadcrumb">
             <span>Área de trabalho</span>
             <Icon name="chevron" size={13} />
-            <strong>Usuários</strong>
+            <strong>{title}</strong>
           </div>
           <div className="account-menu">
             <span className={`connection-label ${session.mode === 'demo' ? 'demo' : ''}`}>

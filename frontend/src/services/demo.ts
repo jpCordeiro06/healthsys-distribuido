@@ -1,5 +1,5 @@
 import { ApiError } from '../api'
-import type { Session, User, UsersService } from '../types'
+import type { Session, User, UsersService, Patient, PatientsService } from '../types'
 
 export const demoEnabled = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO === 'true'
 
@@ -69,6 +69,44 @@ export function createDemoUsersService(): UsersService {
       const user = { id: crypto.randomUUID(), nome, email, perfil }
       users.push(user)
       return user
+    },
+  }
+}
+
+
+export function createDemoPatientsService(): PatientsService {
+  const patients: Patient[] = [
+    { id: 'demo-patient-1', nome: 'Ana Exemplo', cpf: '52998224725', dataNascimento: '1990-05-12', sexo: 'Feminino', telefone: '(85) 99999-0000' },
+    { id: 'demo-patient-2', nome: 'Bruno Exemplo', cpf: '11144477735', dataNascimento: '1985-09-20', sexo: 'Masculino', telefone: null },
+  ]
+  function checkCpf(cpf: string, id?: string) {
+    if (patients.some((patient) => patient.id !== id && patient.cpf === cpf)) {
+      throw new ApiError('Já existe um paciente com este CPF.', 409, { cpf: ['Este CPF já está em uso.'] })
+    }
+  }
+  return {
+    listPatients: async (number) => {
+      const sorted = [...patients].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+      const size = 10
+      return { content: sorted.slice(number * size, (number + 1) * size), number, size,
+        totalElements: sorted.length, totalPages: Math.ceil(sorted.length / size), first: number === 0,
+        last: (number + 1) * size >= sorted.length }
+    },
+    createPatient: async (data) => {
+      const cpf = data.cpf.replace(/\D/g, '')
+      checkCpf(cpf)
+      const patient = { ...data, cpf, id: crypto.randomUUID() }
+      patients.push(patient)
+      return patient
+    },
+    updatePatient: async (id, data) => {
+      const index = patients.findIndex((patient) => patient.id === id)
+      if (index < 0) throw new ApiError('Paciente não encontrado.', 404)
+      const cpf = data.cpf.replace(/\D/g, '')
+      checkCpf(cpf, id)
+      const patient = { ...data, cpf, id }
+      patients[index] = patient
+      return patient
     },
   }
 }

@@ -70,7 +70,7 @@ test('demo creates users, validates passwords, rejects duplicate emails and rese
   await expect(page).toHaveURL(/\/login$/)
   await page.getByRole('button', { name: 'Explorar demonstração' }).click()
   await expect(page.getByRole('heading', { name: 'Usuários.', exact: true })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Pacientes', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Pacientes', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Novo usuário' }).click()
   await expect(page.getByLabel('Nome completo')).toBeFocused()
   await fillUser(page)
