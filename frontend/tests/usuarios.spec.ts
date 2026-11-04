@@ -66,8 +66,8 @@ test('demo creates users, validates passwords, rejects duplicate emails and rese
   page.on('request', (request) => {
     if (request.url().startsWith(api)) calls++
   })
-  await page.goto('/#/users')
-  await expect(page).toHaveURL(/\/$/)
+  await page.goto('/users')
+  await expect(page).toHaveURL(/\/login$/)
   await page.getByRole('button', { name: 'Explorar demonstração' }).click()
   await expect(page.getByRole('heading', { name: 'Usuários.', exact: true })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Pacientes', exact: true })).toHaveCount(0)
@@ -319,4 +319,23 @@ test('demo editing supports cancellation, duplicate email feedback and saving', 
   await expect(dialog).not.toBeVisible()
   await expect(page.getByRole('rowheader', { name: /Marina Atualizada/ })).toBeVisible()
   await expect(page.getByRole('status')).toHaveText('Usuário atualizado com sucesso.')
+})
+
+
+test('router protects system routes and renders the shared layout only after login', async ({ page }) => {
+  await page.goto('/users')
+  await expect(page).toHaveURL(/\/login$/)
+  await expect(page.getByRole('navigation')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Explorar demonstração' }).click()
+  await expect(page).toHaveURL(/\/users$/)
+  await expect(page.getByRole('link', { name: 'Usuários', exact: true })).toHaveAttribute('aria-current', 'page')
+  await expect(page.getByRole('main')).toContainText('Lista de usuários')
+  await page.getByRole('link', { name: 'Usuários', exact: true }).click()
+  await expect(page).toHaveURL(/\/users$/)
+  await page.getByRole('button', { name: 'Sair da plataforma' }).click()
+  await expect(page).toHaveURL(/\/login$/)
+  await expect(page.getByRole('navigation')).toHaveCount(0)
+  await page.goto('/users')
+  await expect(page).toHaveURL(/\/login$/)
+  await expect(page.getByRole('button', { name: 'Entrar na plataforma' })).toBeVisible()
 })
