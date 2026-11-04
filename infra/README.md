@@ -24,6 +24,14 @@ MONGO_DATABASE=healthsys
 
 O arquivo `.env.example` contém um modelo dessas configurações.
 
+Antes de iniciar o Compose, gere o par RSA local conforme o
+[README do user-service](../services/user-service/README.md#chaves-rsa-locais).
+O `user-service` assina os tokens com `secrets/private.pem`. Os serviços validam
+com o mesmo `secrets/public.pem`, montado como secret e carregado pelo `configtree`
+do Spring. Assim, o Compose não depende da cópia da chave pública em
+`HEALTHSYS_SECURITY_JWT_PUBLIC_KEY` no `.env`; essa variável continua disponível
+para executar serviços diretamente fora do Compose.
+
 ## Iniciando os serviços
 
 Para construir as imagens e iniciar todos os serviços:

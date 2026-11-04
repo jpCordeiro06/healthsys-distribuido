@@ -27,10 +27,13 @@ services:
       - ..:/workspace:ro
       - user-service-gradle-cache:/home/gradle/.gradle
     container_name: healthsys-user-service
+    secrets:
+      - source: jwt-public-key
+        target: healthsys.security.jwt.public-key
     environment:
       RSA_PRIVATE_KEY: file:/workspace/secrets/private.pem
-      RSA_PUBLIC_KEY: file:/workspace/secrets/public.pem
-      HEALTHSYS_SECURITY_JWT_PUBLIC_KEY: ${HEALTHSYS_SECURITY_JWT_PUBLIC_KEY:-}
+      RSA_PUBLIC_KEY: file:/run/secrets/healthsys.security.jwt.public-key
+      SPRING_CONFIG_IMPORT: configtree:/run/secrets/
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
@@ -52,8 +55,11 @@ services:
       - ..:/workspace:ro
       - patient-service-gradle-cache:/home/gradle/.gradle
     container_name: healthsys-patient-service
+    secrets:
+      - source: jwt-public-key
+        target: healthsys.security.jwt.public-key
     environment:
-      HEALTHSYS_SECURITY_JWT_PUBLIC_KEY: ${HEALTHSYS_SECURITY_JWT_PUBLIC_KEY:-}
+      SPRING_CONFIG_IMPORT: configtree:/run/secrets/
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
@@ -75,8 +81,11 @@ services:
       - ..:/workspace:ro
       - medical-record-service-gradle-cache:/home/gradle/.gradle
     container_name: healthsys-medical-record-service
+    secrets:
+      - source: jwt-public-key
+        target: healthsys.security.jwt.public-key
     environment:
-      HEALTHSYS_SECURITY_JWT_PUBLIC_KEY: ${HEALTHSYS_SECURITY_JWT_PUBLIC_KEY:-}
+      SPRING_CONFIG_IMPORT: configtree:/run/secrets/
     ports:
       - '8083:8083'
     networks:
@@ -92,8 +101,11 @@ services:
       - ..:/workspace:ro
       - triage-service-gradle-cache:/home/gradle/.gradle
     container_name: healthsys-triage-service
+    secrets:
+      - source: jwt-public-key
+        target: healthsys.security.jwt.public-key
     environment:
-      HEALTHSYS_SECURITY_JWT_PUBLIC_KEY: ${HEALTHSYS_SECURITY_JWT_PUBLIC_KEY:-}
+      SPRING_CONFIG_IMPORT: configtree:/run/secrets/
     ports:
       - '8084:8084'
     networks:
@@ -109,8 +121,11 @@ services:
       - ..:/workspace:ro
       - notification-service-gradle-cache:/home/gradle/.gradle
     container_name: healthsys-notification-service
+    secrets:
+      - source: jwt-public-key
+        target: healthsys.security.jwt.public-key
     environment:
-      HEALTHSYS_SECURITY_JWT_PUBLIC_KEY: ${HEALTHSYS_SECURITY_JWT_PUBLIC_KEY:-}
+      SPRING_CONFIG_IMPORT: configtree:/run/secrets/
     ports:
       - '8085:8085'
     networks:
@@ -226,3 +241,7 @@ volumes:
 networks:
   healthsys-network:
     driver: bridge
+
+secrets:
+  jwt-public-key:
+    file: ${JWT_PUBLIC_KEY_FILE:-../secrets/public.pem}
