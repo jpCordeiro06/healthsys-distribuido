@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ApiError } from '../api'
 import { PatientDialog } from '../components/PatientDialog'
+import { ConfirmDeleteDialog } from '../components/ConfirmDeleteDialog'
 import { Icon } from '../components/Icon'
 import { profileLabels, type Page, type Session, type Patient, type PatientsService } from '../types'
 
@@ -27,6 +28,7 @@ export function PatientsPage({ session, service, onExpired }: Props) {
   const [error, setError] = useState('')
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<Patient | null>(null)
+  const [deleting, setDeleting] = useState<Patient | null>(null)
   const [notice, setNotice] = useState('')
   const heading = useRef<HTMLHeadingElement>(null)
   const loading = data === null && error === ''
@@ -78,6 +80,12 @@ export function PatientsPage({ session, service, onExpired }: Props) {
     setCreating(false)
     reload(0)
     setNotice('Paciente cadastrado com sucesso.')
+  }
+
+  function deleted() {
+    setDeleting(null)
+    reload(page > 0 && data?.content.length === 1 ? page - 1 : page)
+    setNotice('Paciente excluído com sucesso.')
   }
 
   return (
@@ -173,7 +181,7 @@ export function PatientsPage({ session, service, onExpired }: Props) {
           </div>
         ) : data?.content.length ? (
           <div className="table-scroll" tabIndex={0} role="region" aria-label="Tabela de pacientes">
-            <table>
+            <table className="patients-table">
               <caption className="sr-only">Pacientes cadastrados</caption>
               <thead>
                 <tr>
@@ -201,9 +209,15 @@ export function PatientsPage({ session, service, onExpired }: Props) {
                     <td>{patient.sexo}</td>
                     <td>{patient.telefone || '—'}</td>
                     <td>
-                      <button type="button" className="button quiet" aria-label={`Editar ${patient.nome}`} onClick={() => setEditing(patient)}>
-                        Editar
-                      </button>
+                      <div className="record-actions">
+                        <button type="button" className="button quiet" aria-label={`Editar ${patient.nome}`} onClick={() => setEditing(patient)}>
+                          Editar
+                        </button>
+                        <button type="button" className="button danger-quiet" aria-label={`Excluir paciente ${patient.nome}`} onClick={() => setDeleting(patient)}>
+                          <Icon name="trash" size={16} />
+                          Excluir
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -262,6 +276,17 @@ export function PatientsPage({ session, service, onExpired }: Props) {
           ? 'Ambiente de demonstração • Apenas dados fictícios'
           : 'Acesso restrito à equipe autorizada'}
       </p>
+      {deleting && (
+        <ConfirmDeleteDialog
+          kind="paciente"
+          recordName={deleting.nome}
+          recordDetail={deleting.cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4')}
+          onDelete={() => service.deletePatient(deleting.id)}
+          onDeleted={deleted}
+          onClose={() => setDeleting(null)}
+          onExpired={onExpired}
+        />
+      )}
       {editing && (
         <PatientDialog
           key={editing.id}

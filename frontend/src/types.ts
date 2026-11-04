@@ -54,6 +54,7 @@ export interface UsersService {
   listUsers: (page: number, signal?: AbortSignal) => Promise<Page<User>>
   createUser: (data: UserInput) => Promise<User>
   updateUser: (id: string, data: UserUpdateInput) => Promise<User>
+  deleteUser: (id: string) => Promise<void>
 }
 
 
@@ -78,4 +79,5 @@ export interface PatientsService {
   listPatients: (page: number, signal?: AbortSignal) => Promise<Page<Patient>>
   createPatient: (data: PatientInput) => Promise<Patient>
   updatePatient: (id: string, data: PatientInput) => Promise<Patient>
+  deletePatient: (id: string) => Promise<void>
 }
