@@ -15,7 +15,7 @@ const newUser = {
 }
 const pageOf = (content: unknown[], page = 0, totalElements = content.length) => ({
   content,
-  page,
+  number: page,
   size: 10,
   totalElements,
   totalPages: Math.ceil(totalElements / 10),
@@ -262,4 +262,61 @@ test('incompatible API contracts show clear errors without replacing data by a d
   )
   await expect(page.getByRole('button', { name: 'Sair da plataforma' })).toBeVisible()
   await expect(page.getByText('DEMONSTRAÇÃO', { exact: true })).not.toBeVisible()
+})
+
+
+test('edits an API user, preserves an omitted password and submits a new password when provided', async ({ page }) => {
+  let record = { ...user }
+  const updates: unknown[] = []
+  await page.route(`${api}/users**`, (route) => {
+    if (route.request().method() === 'PUT') {
+      expect(route.request().url()).toBe(`${api}/users/${user.id}`)
+      expect(route.request().headers().authorization).toBe('Bearer test-access-token')
+      const input = route.request().postDataJSON()
+      updates.push(input)
+      record = { ...record, nome: input.nome, email: input.email, perfil: input.perfil }
+      return route.fulfill({ json: record })
+    }
+    return route.fulfill({ json: pageOf([record]) })
+  })
+  await signIn(page)
+  await page.getByRole('button', { name: `Editar ${user.nome}`, exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByLabel('Nome completo')).toHaveValue(user.nome)
+  await expect(dialog.getByLabel('E-mail')).toHaveValue(user.email)
+  await expect(dialog.getByLabel('Perfil de acesso')).toHaveValue(user.perfil)
+  await expect(dialog.getByLabel('Nova senha')).toBeEmpty()
+  await dialog.getByLabel('Nome completo').fill('Nome atualizado')
+  await dialog.getByLabel('Perfil de acesso').selectOption('MEDICO')
+  await dialog.getByRole('button', { name: 'Salvar alterações' }).click()
+  await expect(dialog).not.toBeVisible()
+  await expect(page.getByRole('rowheader', { name: /Nome atualizado/ })).toBeVisible()
+  expect(updates[0]).toEqual({ nome: 'Nome atualizado', email: user.email, perfil: 'MEDICO' })
+  await page.getByRole('button', { name: 'Editar Nome atualizado', exact: true }).click()
+  await dialog.getByLabel('Nova senha').fill('OutraSenha123')
+  await dialog.getByRole('button', { name: 'Salvar alterações' }).click()
+  await expect(dialog).not.toBeVisible()
+  expect(updates[1]).toEqual({ nome: 'Nome atualizado', email: user.email, perfil: 'MEDICO', senha: 'OutraSenha123' })
+})
+
+test('demo editing supports cancellation, duplicate email feedback and saving', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Explorar demonstração' }).click()
+  const edit = page.getByRole('button', { name: 'Editar Marina Exemplo', exact: true })
+  await edit.click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Nome completo').fill('Não salvar')
+  await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click()
+  await expect(edit).toBeFocused()
+  await edit.click()
+  await expect(dialog.getByLabel('Nome completo')).toHaveValue('Marina Exemplo')
+  await dialog.getByLabel('E-mail').fill('demo@example.invalid')
+  await dialog.getByRole('button', { name: 'Salvar alterações' }).click()
+  await expect(dialog.getByText('Este e-mail já está em uso.', { exact: true })).toBeVisible()
+  await dialog.getByLabel('E-mail').fill('marina@example.invalid')
+  await dialog.getByLabel('Nome completo').fill('Marina Atualizada')
+  await dialog.getByRole('button', { name: 'Salvar alterações' }).click()
+  await expect(dialog).not.toBeVisible()
+  await expect(page.getByRole('rowheader', { name: /Marina Atualizada/ })).toBeVisible()
+  await expect(page.getByRole('status')).toHaveText('Usuário atualizado com sucesso.')
 })

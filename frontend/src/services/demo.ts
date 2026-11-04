@@ -42,13 +42,23 @@ export function createDemoUsersService(): UsersService {
       const totalPages = Math.ceil(sorted.length / size)
       return {
         content: sorted.slice(page * size, (page + 1) * size),
-        page,
+        number: page,
         size,
         totalElements: sorted.length,
         totalPages,
         first: page === 0,
         last: page >= totalPages - 1,
       }
+    },
+    updateUser: async (id, { nome, email, perfil }) => {
+      const index = users.findIndex((user) => user.id === id)
+      if (index < 0) throw new ApiError('Usuário não encontrado.', 404)
+      if (users.some((user) => user.id !== id && user.email.toLowerCase() === email.toLowerCase())) {
+        throw new ApiError('Já existe um usuário com este e-mail.', 409, { email: ['Este e-mail já está em uso.'] })
+      }
+      const user = { id, nome, email, perfil }
+      users[index] = user
+      return user
     },
     createUser: async ({ nome, email, perfil }) => {
       if (users.some((user) => user.email.toLowerCase() === email.toLowerCase())) {

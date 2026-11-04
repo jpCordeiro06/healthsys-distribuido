@@ -4,6 +4,7 @@ import br.edu.healthsys.user.domain.User;
 import br.edu.healthsys.user.repository.UserRepository;
 import br.edu.healthsys.user.service.UserService;
 import java.util.UUID;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -23,12 +24,59 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 class UserControllerTest {
     private UserRepository repository;
     private BCryptPasswordEncoder encoder;
     private MockMvc mvc;
+
+    @Test
+    void updatesUserWithoutChangingPasswordWhenOmitted() throws Exception {
+        UUID id = UUID.randomUUID();
+        User user = new User();
+        user.setId(id);
+        user.setSenha(encoder.encode("SenhaAnterior123"));
+        String oldHash = user.getSenha();
+        when(repository.findById(id)).thenReturn(Optional.of(user));
+        when(repository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        mvc.perform(put("/api/v1/users/{id}", id).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nome\":\"Nome novo\",\"email\":\"novo@example.com\",\"perfil\":\"MEDICO\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("nome").value("Nome novo"))
+            .andExpect(jsonPath("email").value("novo@example.com"))
+            .andExpect(jsonPath("perfil").value("MEDICO"))
+            .andExpect(jsonPath("password").doesNotExist())
+            .andExpect(jsonPath("senha").doesNotExist());
+        assertThat(user.getSenha()).isEqualTo(oldHash);
+    }
+
+    @Test
+    void hashesNewPasswordWhenUpdatingUser() throws Exception {
+        UUID id = UUID.randomUUID();
+        User user = new User();
+        user.setId(id);
+        when(repository.findById(id)).thenReturn(Optional.of(user));
+        when(repository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        mvc.perform(put("/api/v1/users/{id}", id).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nome\":\"Jorge\",\"email\":\"novo@example.com\",\"perfil\":\"MEDICO\",\"senha\":\"NovaSenha123\"}"))
+            .andExpect(status().isOk());
+        assertThat(encoder.matches("NovaSenha123", user.getSenha())).isTrue();
+    }
+
+    @Test
+    void rejectsDuplicateEmailWithoutSavingAndReturns404ForUnknownUser() throws Exception {
+        UUID id = UUID.randomUUID();
+        String body = "{\"nome\":\"Jorge\",\"email\":\"outro@example.com\",\"perfil\":\"MEDICO\"}";
+        mvc.perform(put("/api/v1/users/{id}", id).contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isNotFound());
+        when(repository.findById(id)).thenReturn(Optional.of(new User()));
+        when(repository.existsByEmailAndIdNot("outro@example.com", id)).thenReturn(true);
+        mvc.perform(put("/api/v1/users/{id}", id).contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isConflict());
+        verify(repository, never()).save(any(User.class));
+    }
 
     @BeforeEach
     void setUp() {

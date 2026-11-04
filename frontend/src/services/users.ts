@@ -15,6 +15,16 @@ export function createUsersService(token: string): UsersService {
       }
       return result
     },
+    updateUser: async (id, data) => {
+      try {
+        return await request(`/users/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(data) }, token)
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 409) {
+          throw new ApiError('Já existe um usuário com este e-mail.', 409, { email: ['Este e-mail já está em uso.'] })
+        }
+        throw error
+      }
+    },
     createUser: (data) => request('/users', { method: 'POST', body: JSON.stringify(data) }, token),
   }
 }

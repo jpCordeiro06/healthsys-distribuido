@@ -1,6 +1,8 @@
 package br.edu.healthsys.user.service;
 
 import br.edu.healthsys.user.domain.User;
+import br.edu.healthsys.user.dto.UserUpdateRequest;
+import org.springframework.transaction.annotation.Transactional;
 import br.edu.healthsys.user.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -52,5 +54,21 @@ public class UserService {
             throw new IllegalArgumentException("Utilizador não encontrado.");
         }
         userRepository.deleteById(id);
+    }
+
+    @Transactional
+    public User update(UUID id, UserUpdateRequest request) {
+        User user = userRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+        if (userRepository.existsByEmailAndIdNot(request.email(), id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "O e-mail fornecido já está em uso.");
+        }
+        user.setNome(request.nome());
+        user.setEmail(request.email());
+        user.setPerfil(request.perfil());
+        if (request.senha() != null) {
+            user.setSenha(passwordEncoder.encode(request.senha()));
+        }
+        return userRepository.save(user);
     }
 }

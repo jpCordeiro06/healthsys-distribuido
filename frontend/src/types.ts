@@ -22,6 +22,8 @@ export interface UserInput {
   perfil: Profile
 }
 
+export type UserUpdateInput = Omit<UserInput, 'senha'> & { senha?: string }
+
 export interface Page<T> {
   content: T[]
   number: number
@@ -51,4 +53,5 @@ export interface Session {
 export interface UsersService {
   listUsers: (page: number, signal?: AbortSignal) => Promise<Page<User>>
   createUser: (data: UserInput) => Promise<User>
+  updateUser: (id: string, data: UserUpdateInput) => Promise<User>
 }

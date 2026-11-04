@@ -2,6 +2,7 @@ package br.edu.healthsys.user.controller;
 
 import br.edu.healthsys.user.dto.UserCreateRequest;
 import br.edu.healthsys.user.dto.UserResponse;
+import br.edu.healthsys.user.dto.UserUpdateRequest;
 import jakarta.validation.Valid;
 import br.edu.healthsys.user.service.UserService;
 import org.springframework.http.ResponseEntity;
@@ -41,5 +42,10 @@ public class UserController {
     public ResponseEntity<Void> deleteUser(@PathVariable UUID id) {
         userService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<UserResponse> updateUser(@PathVariable UUID id, @Valid @RequestBody UserUpdateRequest request) {
+        return ResponseEntity.ok(UserResponse.from(userService.update(id, request)));
     }
 }

@@ -26,6 +26,7 @@ export function UsersPage({ session, service, onExpired }: Props) {
   const [data, setData] = useState<Page<User> | null>(null)
   const [error, setError] = useState('')
   const [creating, setCreating] = useState(false)
+  const [editing, setEditing] = useState<User | null>(null)
   const [notice, setNotice] = useState('')
   const heading = useRef<HTMLHeadingElement>(null)
   const loading = data === null && error === ''
@@ -87,7 +88,7 @@ export function UsersPage({ session, service, onExpired }: Props) {
           <h1 ref={heading} tabIndex={-1}>
             Usuários<span className="heading-dot">.</span>
           </h1>
-          <p className="muted">Consulte e cadastre os usuários da plataforma.</p>
+          <p className="muted">Consulte, cadastre e edite os usuários da plataforma.</p>
         </div>
         <button type="button" className="button primary" onClick={() => setCreating(true)}>
           <Icon name="plus" size={18} />
@@ -179,6 +180,7 @@ export function UsersPage({ session, service, onExpired }: Props) {
                   <th scope="col">Nome</th>
                   <th scope="col">E-mail</th>
                   <th scope="col">Perfil</th>
+                  <th scope="col">Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -197,6 +199,11 @@ export function UsersPage({ session, service, onExpired }: Props) {
                       <span className={`role-badge ${user.perfil === 'ADMIN' ? 'admin' : ''}`}>
                         {profileLabels[user.perfil] ?? user.perfil}
                       </span>
+                    </td>
+                    <td>
+                      <button type="button" className="button quiet" aria-label={`Editar ${user.nome}`} onClick={() => setEditing(user)}>
+                        Editar
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -255,6 +262,20 @@ export function UsersPage({ session, service, onExpired }: Props) {
           ? 'Ambiente de demonstração • Apenas dados fictícios'
           : 'Acesso restrito à equipe autorizada'}
       </p>
+      {editing && (
+        <CreateUserDialog
+          key={editing.id}
+          user={editing}
+          service={service}
+          onClose={() => setEditing(null)}
+          onCreated={() => {
+            setEditing(null)
+            reload()
+            setNotice('Usuário atualizado com sucesso.')
+          }}
+          onExpired={onExpired}
+        />
+      )}
       {creating && (
         <CreateUserDialog
           service={service}

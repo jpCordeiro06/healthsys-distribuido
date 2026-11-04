@@ -6,6 +6,7 @@ import {
   type UsersService,
   type FieldErrors,
   type Profile,
+  type User,
 } from '../types'
 import { Icon } from './Icon'
 
@@ -19,11 +20,11 @@ function Field({
     <div className="field">
       <label htmlFor={props.id}>
         {label}
-        <span className="required-mark"> *</span>
+        {props.required !== false && <span className="required-mark"> *</span>}
       </label>
       <input
         {...props}
-        required
+        required={props.required ?? true}
         aria-invalid={error?.length ? true : undefined}
         aria-describedby={error?.length ? errorId : props['aria-describedby']}
       />
@@ -37,13 +38,14 @@ function Field({
 }
 
 interface Props {
+  user?: User
   service: UsersService
   onClose: () => void
   onCreated: () => void
   onExpired: () => void
 }
 
-export function CreateUserDialog({ service, onClose, onCreated, onExpired }: Props) {
+export function CreateUserDialog({ user, service, onClose, onCreated, onExpired }: Props) {
   const dialog = useRef<HTMLDialogElement>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -72,12 +74,18 @@ export function CreateUserDialog({ service, onClose, onCreated, onExpired }: Pro
     setError('')
     setFields({})
     try {
-      await service.createUser({
+      const input = {
         nome: value('nome'),
         email: value('email'),
         senha: String(data.get('senha') ?? ''),
         perfil: value('perfil') as Profile,
-      })
+      }
+      if (user) {
+        const { senha, ...details } = input
+        await service.updateUser(user.id, { ...details, ...(senha ? { senha } : {}) })
+      } else {
+        await service.createUser(input)
+      }
       onCreated()
     } catch (error) {
       if (error instanceof ApiError) {
@@ -113,16 +121,16 @@ export function CreateUserDialog({ service, onClose, onCreated, onExpired }: Pro
         <button
           type="button"
           className="icon-button"
-          aria-label="Fechar cadastro"
+          aria-label={user ? 'Fechar edição' : 'Fechar cadastro'}
           onClick={onClose}
           disabled={busy}
         >
           <Icon name="close" />
         </button>
       </div>
-      <h2 id="dialog-title">Novo usuário</h2>
+      <h2 id="dialog-title">{user ? 'Editar usuário' : 'Novo usuário'}</h2>
       <p className="muted" id="dialog-description">
-        Cadastre uma pessoa para acessar a plataforma. Campos com * são obrigatórios.
+        {user ? 'Atualize os dados do usuário.' : 'Cadastre uma pessoa para acessar a plataforma.'} Campos com * são obrigatórios.
       </p>
       <form
         onSubmit={(event) => void submit(event)}
@@ -136,6 +144,7 @@ export function CreateUserDialog({ service, onClose, onCreated, onExpired }: Pro
         <fieldset disabled={busy} className="form-fields">
           <Field
             id="user-name"
+            defaultValue={user?.nome}
             name="nome"
             label="Nome completo"
             autoComplete="name"
@@ -145,6 +154,7 @@ export function CreateUserDialog({ service, onClose, onCreated, onExpired }: Pro
           />
           <Field
             id="user-email"
+            defaultValue={user?.email}
             name="email"
             label="E-mail"
             type="email"
@@ -161,7 +171,7 @@ export function CreateUserDialog({ service, onClose, onCreated, onExpired }: Pro
               id="user-profile"
               name="perfil"
               required
-              defaultValue=""
+              defaultValue={user?.perfil ?? ''}
               aria-invalid={fields.perfil?.length ? true : undefined}
               aria-describedby={fields.perfil?.length ? 'profile-error' : undefined}
             >
@@ -183,7 +193,8 @@ export function CreateUserDialog({ service, onClose, onCreated, onExpired }: Pro
           <Field
             id="user-password"
             name="senha"
-            label="Senha inicial"
+            label={user ? 'Nova senha' : 'Senha inicial'}
+            required={!user}
             type="password"
             autoComplete="new-password"
             placeholder="Pelo menos 8 caracteres"
@@ -193,7 +204,7 @@ export function CreateUserDialog({ service, onClose, onCreated, onExpired }: Pro
             aria-describedby="password-help"
           />
           <p className="field-help" id="password-help">
-            A senha deve ter entre 8 e 128 caracteres.
+            {user ? 'Deixe em branco para manter a senha atual. Se preenchida, use de 8 a 128 caracteres.' : 'A senha deve ter entre 8 e 128 caracteres.'}
           </p>
         </fieldset>
         {error && (
@@ -207,7 +218,7 @@ export function CreateUserDialog({ service, onClose, onCreated, onExpired }: Pro
           </button>
           <button type="submit" className="button primary" disabled={busy}>
             {busy ? <span className="spinner" /> : <Icon name="check" size={17} />}
-            {busy ? 'Salvando…' : 'Cadastrar usuário'}
+            {busy ? 'Salvando…' : user ? 'Salvar alterações' : 'Cadastrar usuário'}
           </button>
         </div>
       </form>
