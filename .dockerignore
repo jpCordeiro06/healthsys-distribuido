@@ -1,0 +1,15 @@
+.git
+.idea
+.vscode
+.agents
+.codex
+.aws
+.gradle
+**/build
+**/node_modules
+frontend/dist
+**/.env
+**/.env.*
+!**/.env.example
+secrets
+**/*.log

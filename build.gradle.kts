@@ -8,6 +8,10 @@ allprojects {
     group = "br.edu.healthsys"
     version = "0.1.0-SNAPSHOT"
 
+    providers.environmentVariable("HEALTHSYS_BUILD_DIR").orNull?.let { buildRoot ->
+        layout.buildDirectory.set(file("$buildRoot/${project.path.replace(':', '/')}"))
+    }
+
     repositories {
         mavenCentral()
     }
@@ -26,6 +30,7 @@ configure(subprojects.filter { it.path.startsWith(":services:") }) {
 
     dependencies {
         "implementation"("org.springframework.boot:spring-boot-starter-actuator")
+        "developmentOnly"("org.springframework.boot:spring-boot-devtools")
         "testImplementation"("org.springframework.boot:spring-boot-starter-test")
         "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
     }

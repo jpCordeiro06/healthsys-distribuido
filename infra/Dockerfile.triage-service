@@ -1,12 +1,27 @@
+FROM gradle:8.14.3-jdk17 AS development
+
+WORKDIR /workspace
+
+COPY infra/dev-entrypoint.sh /usr/local/bin/dev-entrypoint
+COPY . .
+
+ENV HEALTHSYS_BUILD_DIR=/tmp/healthsys-build
+
+EXPOSE 8084
+
+ENTRYPOINT ["bash", "/usr/local/bin/dev-entrypoint"]
+CMD ["triage-service"]
+
 FROM gradle:8.14.3-jdk17 AS build
 
 WORKDIR /workspace
 
 COPY . .
 
-RUN ./gradlew :services:triage-service:bootJar --no-daemon
+RUN --mount=type=cache,id=healthsys-gradle-build,target=/home/gradle/.gradle,sharing=locked \
+    gradle :services:triage-service:bootJar --no-daemon --max-workers=2
 
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:17-jre-alpine AS production
 
 WORKDIR /app
 

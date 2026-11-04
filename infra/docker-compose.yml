@@ -3,6 +3,11 @@ services:
     build:
       context: ..
       dockerfile: infra/Dockerfile.api-gateway
+      target: development
+    init: true
+    volumes:
+      - ..:/workspace:ro
+      - api-gateway-gradle-cache:/home/gradle/.gradle
     container_name: healthsys-api-gateway
     environment:
       HEALTHSYS_USER_SERVICE_URL: http://user-service:8081
@@ -16,11 +21,24 @@ services:
     build:
       context: ..
       dockerfile: infra/Dockerfile.user-service
+      target: development
+    init: true
+    volumes:
+      - ..:/workspace:ro
+      - user-service-gradle-cache:/home/gradle/.gradle
     container_name: healthsys-user-service
     environment:
+      RSA_PRIVATE_KEY: file:/workspace/secrets/private.pem
+      RSA_PUBLIC_KEY: file:/workspace/secrets/public.pem
       HEALTHSYS_SECURITY_JWT_PUBLIC_KEY: ${HEALTHSYS_SECURITY_JWT_PUBLIC_KEY:-}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - '8081:8081'
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - healthsys-network
 
@@ -28,6 +46,11 @@ services:
     build:
       context: ..
       dockerfile: infra/Dockerfile.patient-service
+      target: development
+    init: true
+    volumes:
+      - ..:/workspace:ro
+      - patient-service-gradle-cache:/home/gradle/.gradle
     container_name: healthsys-patient-service
     environment:
       HEALTHSYS_SECURITY_JWT_PUBLIC_KEY: ${HEALTHSYS_SECURITY_JWT_PUBLIC_KEY:-}
@@ -46,6 +69,11 @@ services:
     build:
       context: ..
       dockerfile: infra/Dockerfile.medical-record-service
+      target: development
+    init: true
+    volumes:
+      - ..:/workspace:ro
+      - medical-record-service-gradle-cache:/home/gradle/.gradle
     container_name: healthsys-medical-record-service
     environment:
       HEALTHSYS_SECURITY_JWT_PUBLIC_KEY: ${HEALTHSYS_SECURITY_JWT_PUBLIC_KEY:-}
@@ -58,6 +86,11 @@ services:
     build:
       context: ..
       dockerfile: infra/Dockerfile.triage-service
+      target: development
+    init: true
+    volumes:
+      - ..:/workspace:ro
+      - triage-service-gradle-cache:/home/gradle/.gradle
     container_name: healthsys-triage-service
     environment:
       HEALTHSYS_SECURITY_JWT_PUBLIC_KEY: ${HEALTHSYS_SECURITY_JWT_PUBLIC_KEY:-}
@@ -70,6 +103,11 @@ services:
     build:
       context: ..
       dockerfile: infra/Dockerfile.notification-service
+      target: development
+    init: true
+    volumes:
+      - ..:/workspace:ro
+      - notification-service-gradle-cache:/home/gradle/.gradle
     container_name: healthsys-notification-service
     environment:
       HEALTHSYS_SECURITY_JWT_PUBLIC_KEY: ${HEALTHSYS_SECURITY_JWT_PUBLIC_KEY:-}
@@ -174,6 +212,12 @@ services:
       retries: 5
 
 volumes:
+  api-gateway-gradle-cache:
+  user-service-gradle-cache:
+  patient-service-gradle-cache:
+  medical-record-service-gradle-cache:
+  triage-service-gradle-cache:
+  notification-service-gradle-cache:
   postgres_data:
   mongodb_data:
   redis_data:
