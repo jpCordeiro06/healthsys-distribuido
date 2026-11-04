@@ -139,6 +139,22 @@ p {
 .quiet:hover:not(:disabled) {
   background: #f1f6f2;
 }
+.button.danger {
+  background: #b42318;
+  color: #fff;
+}
+.button.danger:hover:not(:disabled) {
+  background: #912018;
+}
+.button.danger-quiet {
+  color: #b42318;
+  background: transparent;
+  padding: 8px 11px;
+  font-size: 12px;
+}
+.button.danger-quiet:hover:not(:disabled) {
+  background: #fff1ed;
+}
 .icon-button {
   width: 34px;
   height: 34px;
@@ -819,6 +835,26 @@ p {
 .table-scroll {
   overflow-x: auto;
 }
+.record-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.users-table {
+  min-width: 700px;
+}
+.patients-table {
+  min-width: 1000px;
+}
+.patients-table th:first-child {
+  width: 24%;
+}
+.users-table th:last-child,
+.users-table td:last-child,
+.patients-table th:last-child,
+.patients-table td:last-child {
+  width: 200px;
+}
 table {
   border-collapse: collapse;
   width: 100%;
@@ -1031,6 +1067,31 @@ tbody tr:nth-child(2n) .small {
 }
 .record-dialog .error-box {
   margin-top: 20px;
+}
+.delete-dialog .dialog-icon {
+  background: #fff1ed;
+  color: #b42318;
+}
+.delete-record {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 22px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #f6f8f4;
+  overflow-wrap: anywhere;
+}
+.delete-record strong {
+  font-size: 15px;
+}
+.delete-record span {
+  color: #63756b;
+  font-size: 12px;
+}
+.delete-dialog .dialog-footer {
+  flex-wrap: wrap;
 }
 
 @media (min-width: 1600px) {

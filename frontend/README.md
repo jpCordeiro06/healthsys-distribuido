@@ -1,6 +1,6 @@
 # Frontend — HealthSys
 
-Interface web de login e gerenciamento de usuários desenvolvida com React, TypeScript e Vite.
+Interface web de login e gerenciamento de usuários e pacientes desenvolvida com React, TypeScript e Vite.
 
 ## Executar
 
@@ -18,6 +18,7 @@ Abra [http://localhost:5175](http://localhost:5175). A opção `--strictPort` im
 
 - Login com e-mail e senha, saída e tratamento de sessão expirada.
 - Listagem paginada e cadastro de usuários com nome, e-mail, perfil e senha inicial.
+- Exclusão de usuários e pacientes com confirmação do nome e e-mail ou CPF do registro.
 - Validação dos formulários e mensagens de carregamento, erro e lista vazia.
 - Layout adaptado para desktop e celular.
 - Demonstração explícita com usuários fictícios, sem chamadas à API.
@@ -32,6 +33,7 @@ Em desenvolvimento, clique em **Explorar demonstração** para testar. Os cadast
 | `src/pages/LoginPage.tsx`             | Formulário de login e entrada na demonstração  |
 | `src/pages/UsersPage.tsx`             | Listagem, paginação e abertura do cadastro     |
 | `src/components/CreateUserDialog.tsx` | Formulário de cadastro de usuário              |
+| `src/components/ConfirmDeleteDialog.tsx` | Confirmação de exclusão, processamento e erros |
 | `src/api.ts`                          | Cliente HTTP comum e formato dos erros         |
 | `src/services/auth.ts`                | Chamada de login e leitura da sessão retornada |
 | `src/services/users.ts`               | Endpoints e respostas de usuários              |
@@ -39,7 +41,9 @@ Em desenvolvimento, clique em **Explorar demonstração** para testar. Os cadast
 | `src/types.ts`                        | Formatos de usuário, sessão e paginação        |
 | `src/styles.css`                      | Estilos da interface                           |
 
-As telas recebem um `UsersService` com as operações `listUsers` e `createUser`. A mesma interface é implementada pela API e pela demonstração, mantendo os formulários independentes da fonte dos dados.
+As telas recebem serviços com as operações de listagem, cadastro, edição e exclusão: `UsersService` para usuários e `PatientsService` para pacientes. Essas interfaces são implementadas pela API e pela demonstração, mantendo as telas independentes da fonte dos dados.
+
+A exclusão só é enviada após a confirmação. Durante o envio, os controles da confirmação ficam bloqueados. Em caso de falha, o registro permanece na lista e a mensagem de erro permite uma nova tentativa. Após o sucesso, a lista e o total são consultados novamente; ao excluir o último registro de uma página posterior à primeira, a tela volta uma página.
 
 O endereço padrão é `http://localhost:8080/api/v1`. Para alterá-lo, copie `.env.example` para `.env.local`, ajuste `VITE_API_BASE_URL` e reinicie o Vite.
 
@@ -48,6 +52,8 @@ O endereço padrão é `http://localhost:8080/api/v1`. Para alterá-lo, copie `.
 | `POST /auth/login`                        | Recebe `email`, `senha`; retorna `accessToken`, `tokenType`, `expiresIn`, `usuario` |
 | `GET /users?page=0&size=10&sort=nome,asc` | Retorna paginação com `content`, `page`, `size`, totais, `first`, `last`            |
 | `POST /users`                             | Recebe `nome`, `email`, `senha`, `perfil`; retorna o usuário criado                 |
+| `DELETE /users/{id}`                      | Exclui o usuário confirmado; espera sucesso sem conteúdo (`204`)                  |
+| `DELETE /patients/{id}`                   | Exclui o paciente confirmado; espera sucesso sem conteúdo (`204`)                 |
 
 A referência é [`docs/api/openapi.yaml`](../docs/api/openapi.yaml). As requisições autenticadas enviam `Authorization: Bearer <token>`. A sessão fica em memória; recarregar exige novo login. Sair descarta a sessão local, pois o contrato atual não define um endpoint de revogação. Senhas, tokens e cadastros não são gravados em `localStorage` ou `sessionStorage`.
 
@@ -67,3 +73,5 @@ npm run test:e2e
 Os testes usam a porta 5173, definida em `playwright.config.ts`; reserve essa porta para o HealthSys ao executá-los. Em um Linux sem as bibliotecas do navegador, pode ser necessário `npx playwright install --with-deps chromium`.
 
 Os testes cobrem usuários em demonstração, validação, duplicidade, JWT, paginação, erros da API, expiração e uso no celular. As respostas HTTP são simuladas e não comprovam a integração com os serviços reais.
+
+`tests/exclusao.spec.ts` cobre confirmação e cancelamento, envio do `DELETE` com JWT, bloqueio durante o processamento, falhas de permissão, servidor e rede, expiração da sessão, retorno da última página e exclusão em demonstração no celular.

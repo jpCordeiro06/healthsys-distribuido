@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ApiError } from '../api'
 import { CreateUserDialog } from '../components/CreateUserDialog'
+import { ConfirmDeleteDialog } from '../components/ConfirmDeleteDialog'
 import { Icon } from '../components/Icon'
 import { profileLabels, type Page, type Session, type User, type UsersService } from '../types'
 
@@ -27,6 +28,7 @@ export function UsersPage({ session, service, onExpired }: Props) {
   const [error, setError] = useState('')
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<User | null>(null)
+  const [deleting, setDeleting] = useState<User | null>(null)
   const [notice, setNotice] = useState('')
   const heading = useRef<HTMLHeadingElement>(null)
   const loading = data === null && error === ''
@@ -78,6 +80,12 @@ export function UsersPage({ session, service, onExpired }: Props) {
     setCreating(false)
     reload(0)
     setNotice('Usuário cadastrado com sucesso.')
+  }
+
+  function deleted() {
+    setDeleting(null)
+    reload(page > 0 && data?.content.length === 1 ? page - 1 : page)
+    setNotice('Usuário excluído com sucesso.')
   }
 
   return (
@@ -173,7 +181,7 @@ export function UsersPage({ session, service, onExpired }: Props) {
           </div>
         ) : data?.content.length ? (
           <div className="table-scroll" tabIndex={0} role="region" aria-label="Tabela de usuários">
-            <table>
+            <table className="users-table">
               <caption className="sr-only">Usuários cadastrados</caption>
               <thead>
                 <tr>
@@ -201,9 +209,15 @@ export function UsersPage({ session, service, onExpired }: Props) {
                       </span>
                     </td>
                     <td>
-                      <button type="button" className="button quiet" aria-label={`Editar ${user.nome}`} onClick={() => setEditing(user)}>
-                        Editar
-                      </button>
+                      <div className="record-actions">
+                        <button type="button" className="button quiet" aria-label={`Editar ${user.nome}`} onClick={() => setEditing(user)}>
+                          Editar
+                        </button>
+                        <button type="button" className="button danger-quiet" aria-label={`Excluir usuário ${user.nome}`} onClick={() => setDeleting(user)}>
+                          <Icon name="trash" size={16} />
+                          Excluir
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -262,6 +276,17 @@ export function UsersPage({ session, service, onExpired }: Props) {
           ? 'Ambiente de demonstração • Apenas dados fictícios'
           : 'Acesso restrito à equipe autorizada'}
       </p>
+      {deleting && (
+        <ConfirmDeleteDialog
+          kind="usuário"
+          recordName={deleting.nome}
+          recordDetail={deleting.email}
+          onDelete={() => service.deleteUser(deleting.id)}
+          onDeleted={deleted}
+          onClose={() => setDeleting(null)}
+          onExpired={onExpired}
+        />
+      )}
       {editing && (
         <CreateUserDialog
           key={editing.id}

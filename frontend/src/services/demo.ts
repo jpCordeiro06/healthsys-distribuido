@@ -60,6 +60,11 @@ export function createDemoUsersService(): UsersService {
       users[index] = user
       return user
     },
+    deleteUser: async (id) => {
+      const index = users.findIndex((user) => user.id === id)
+      if (index < 0) throw new ApiError('Usuário não encontrado.', 404)
+      users.splice(index, 1)
+    },
     createUser: async ({ nome, email, perfil }) => {
       if (users.some((user) => user.email.toLowerCase() === email.toLowerCase())) {
         throw new ApiError('Já existe um usuário com este e-mail.', 409, {
@@ -107,6 +112,11 @@ export function createDemoPatientsService(): PatientsService {
       const patient = { ...data, cpf, id }
       patients[index] = patient
       return patient
+    },
+    deletePatient: async (id) => {
+      const index = patients.findIndex((patient) => patient.id === id)
+      if (index < 0) throw new ApiError('Paciente não encontrado.', 404)
+      patients.splice(index, 1)
     },
   }
 }

@@ -26,5 +26,6 @@ export function createUsersService(token: string): UsersService {
       }
     },
     createUser: (data) => request('/users', { method: 'POST', body: JSON.stringify(data) }, token),
+    deleteUser: (id) => request<void>(`/users/${encodeURIComponent(id)}`, { method: 'DELETE' }, token),
   }
 }

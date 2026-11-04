@@ -27,5 +27,6 @@ export function createPatientsService(token: string): PatientsService {
     },
     createPatient: (data) => save('/patients', 'POST', data),
     updatePatient: (id, data) => save(`/patients/${encodeURIComponent(id)}`, 'PUT', data),
+    deletePatient: (id) => request<void>(`/patients/${encodeURIComponent(id)}`, { method: 'DELETE' }, token),
   }
 }
