@@ -37,7 +37,8 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ErrorResponse> status(ResponseStatusException exception) {
         HttpStatus status = HttpStatus.valueOf(exception.getStatusCode().value());
-        String code = status == HttpStatus.NOT_FOUND ? "NAO_ENCONTRADO" : "REQUISICAO_INVALIDA";
+        String code = status == HttpStatus.NOT_FOUND ? "NAO_ENCONTRADO"
+                : status == HttpStatus.CONFLICT ? "CONFLITO" : "REQUISICAO_INVALIDA";
         String message = exception.getReason() == null ? "A requisicao nao pode ser processada." : exception.getReason();
         return ResponseEntity.status(status).body(new ErrorResponse(code, message, Map.of()));
     }
