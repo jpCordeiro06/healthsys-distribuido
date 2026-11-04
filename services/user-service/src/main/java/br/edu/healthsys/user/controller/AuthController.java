@@ -2,6 +2,8 @@ package br.edu.healthsys.user.controller;
 
 import br.edu.healthsys.user.domain.User;
 import br.edu.healthsys.user.dto.LoginRequest;
+import br.edu.healthsys.user.dto.LoginResponse;
+import br.edu.healthsys.user.dto.UserResponse;
 import br.edu.healthsys.user.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -13,7 +15,6 @@ import org.springframework.web.bind.annotation.*;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Instant;
 import java.util.Base64;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -36,7 +37,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
             .orElseThrow(() -> new IllegalArgumentException("Credenciais inválidas."));
 
@@ -57,11 +58,7 @@ public class AuthController {
 
         String token = jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
 
-        return ResponseEntity.ok(Map.of(
-            "accessToken", token,
-            "tokenType", "Bearer",
-            "expiresIn", expiresIn
-        ));
+        return ResponseEntity.ok(new LoginResponse(token, "Bearer", expiresIn, UserResponse.from(user)));
     }
 
     @GetMapping("/public-key")
