@@ -3,7 +3,7 @@ import { ApiError } from '../api'
 import { Icon } from './Icon'
 
 interface Props {
-  kind: 'usuário' | 'paciente'
+  kind: 'usuário' | 'paciente' | 'triagem' | string
   recordName: string
   recordDetail: string
   onDelete: () => Promise<void>

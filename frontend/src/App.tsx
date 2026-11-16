@@ -1,16 +1,29 @@
 import { useCallback, useEffect, useState } from 'react'
 import { createUsersService } from './services/users'
 import { createPatientsService } from './services/patients'
+import { createTriageService } from './services/triage'
 import { PatientsPage } from './pages/PatientsPage'
+import { TriagePage } from './pages/TriagePage'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { AppLayout } from './components/AppLayout'
 import { LoginPage } from './pages/LoginPage'
 import { UsersPage } from './pages/UsersPage'
-import { createDemoSession, createDemoUsersService, createDemoPatientsService, demoEnabled } from './services/demo'
-import type { UsersService, PatientsService, Session } from './types'
+import {
+  createDemoSession,
+  createDemoUsersService,
+  createDemoPatientsService,
+  createDemoTriageService,
+  demoEnabled,
+} from './services/demo'
+import type { UsersService, PatientsService, TriageService, Session } from './types'
 
 function App() {
-  const [auth, setAuth] = useState<{ session: Session; users: UsersService; patients: PatientsService } | null>(null)
+  const [auth, setAuth] = useState<{
+    session: Session
+    users: UsersService
+    patients: PatientsService
+    triage: TriageService
+  } | null>(null)
   const [notice, setNotice] = useState('')
 
   const expireSession = useCallback(() => {
@@ -37,13 +50,23 @@ function App() {
   function signIn(session: Session) {
     if (!session.accessToken) return
     setNotice('')
-    setAuth({ session, users: createUsersService(session.accessToken), patients: createPatientsService(session.accessToken) })
+    setAuth({
+      session,
+      users: createUsersService(session.accessToken),
+      patients: createPatientsService(session.accessToken),
+      triage: createTriageService(session.accessToken),
+    })
   }
 
   function openDemo() {
     if (!demoEnabled) return
     setNotice('')
-    setAuth({ session: createDemoSession(), users: createDemoUsersService(), patients: createDemoPatientsService() })
+    setAuth({
+      session: createDemoSession(),
+      users: createDemoUsersService(),
+      patients: createDemoPatientsService(),
+      triage: createDemoTriageService(),
+    })
   }
 
   function signOut() {
@@ -73,6 +96,19 @@ function App() {
           <Route
             path="/patients"
             element={auth && <PatientsPage session={auth.session} service={auth.patients} onExpired={expireSession} />}
+          />
+          <Route
+            path="/triage"
+            element={
+              auth && (
+                <TriagePage
+                  session={auth.session}
+                  service={auth.triage}
+                  patientsService={auth.patients}
+                  onExpired={expireSession}
+                />
+              )
+            }
           />
         </Route>
         <Route path="*" element={<Navigate to={auth ? '/users' : '/login'} replace />} />

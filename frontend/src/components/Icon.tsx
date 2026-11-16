@@ -10,9 +10,11 @@ export type IconName =
   | 'shield'
   | 'refresh'
   | 'trash'
+  | 'activity'
 
 const paths: Record<IconName, React.ReactNode> = {
   cross: <path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6Z" />,
+  activity: <path d="M22 12h-4l-3 9L9 3l-3 9H2" />,
   users: (
     <>
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m20 0v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />

@@ -7,6 +7,11 @@ import type {
   PatientAllergy,
   PatientVaccine,
   PatientsService,
+  RiskClassification,
+  Symptom,
+  Screening,
+  ScreeningStatus,
+  TriageService,
 } from '../types'
 
 export const demoEnabled = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO === 'true'
@@ -305,5 +310,166 @@ export function createDemoPatientsService(): PatientsService {
       const idx = list.findIndex((v) => v.id === vaccineId)
       if (idx >= 0) list.splice(idx, 1)
     },
+  }
+}
+
+export function createDemoTriageService(): TriageService {
+  const riskClassifications: RiskClassification[] = [
+    {
+      id: 'rc-1',
+      name: 'Emergência (Vermelho)',
+      description: 'Atendimento imediato com risco iminente de morte',
+      priorityLevel: 1,
+      active: true,
+    },
+    {
+      id: 'rc-2',
+      name: 'Muito Urgente (Laranja)',
+      description: 'Atendimento em até 10 minutos',
+      priorityLevel: 2,
+      active: true,
+    },
+    {
+      id: 'rc-3',
+      name: 'Urgente (Amarelo)',
+      description: 'Atendimento em até 60 minutos',
+      priorityLevel: 3,
+      active: true,
+    },
+    {
+      id: 'rc-4',
+      name: 'Pouco Urgente (Verde)',
+      description: 'Atendimento em até 120 minutos',
+      priorityLevel: 4,
+      active: true,
+    },
+    {
+      id: 'rc-5',
+      name: 'Não Urgente (Azul)',
+      description: 'Atendimento em até 240 minutos',
+      priorityLevel: 5,
+      active: true,
+    },
+  ]
+
+  const symptoms: Symptom[] = [
+    { id: 'sym-1', name: 'Febre alta (> 39°C)', description: 'Temperatura corporal elevada', active: true },
+    { id: 'sym-2', name: 'Dor no peito', description: 'Dor torácica de forte intensidade', active: true },
+    { id: 'sym-3', name: 'Falta de ar', description: 'Dispneia ou esforço respiratório', active: true },
+    { id: 'sym-4', name: 'Cefaleia intensa', description: 'Dor de cabeça aguda ou persistente', active: true },
+    { id: 'sym-5', name: 'Náuseas e vômitos', description: 'Desconforto gástrico acompanhado de vômito', active: true },
+    { id: 'sym-6', name: 'Dor abdominal aguda', description: 'Dor na região do abdômen', active: true },
+    { id: 'sym-7', name: 'Tontura e vertigem', description: 'Sensação de perda de equilíbrio ou desmaio', active: true },
+    { id: 'sym-8', name: 'Tosse persistente', description: 'Tosse seca ou produtiva há mais de 3 dias', active: true },
+  ]
+
+  const screenings: Screening[] = [
+    {
+      id: 'demo-screening-1',
+      patientId: 'demo-patient-1',
+      doctorId: 'demo-user-2',
+      riskClassification: riskClassifications[1], // Muito Urgente
+      status: 'AGUARDANDO',
+      screeningDate: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
+      updatedAt: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
+      notes: 'Paciente relata dor torácica de início súbito acompanhada de falta de ar.',
+      symptoms: [symptoms[1], symptoms[2]],
+    },
+    {
+      id: 'demo-screening-2',
+      patientId: 'demo-patient-2',
+      doctorId: 'demo-user-2',
+      riskClassification: riskClassifications[3], // Pouco Urgente
+      status: 'ATENDIDO',
+      screeningDate: new Date(Date.now() - 120 * 60 * 1000).toISOString(),
+      updatedAt: new Date(Date.now() - 50 * 60 * 1000).toISOString(),
+      notes: 'Quadro gripal leve. Paciente já atendido e medicado.',
+      symptoms: [symptoms[0], symptoms[7]],
+    },
+  ]
+
+  return {
+    listScreenings: async (filter) => {
+      let result = [...screenings]
+      if (filter?.patientId) {
+        result = result.filter((s) => s.patientId === filter.patientId)
+      }
+      if (filter?.status) {
+        result = result.filter((s) => s.status === filter.status)
+      }
+      return result.sort(
+        (a, b) => new Date(b.screeningDate).getTime() - new Date(a.screeningDate).getTime(),
+      )
+    },
+    getScreening: async (id) => {
+      const screening = screenings.find((s) => s.id === id)
+      if (!screening) throw new ApiError('Triagem não encontrada.', 404)
+      return screening
+    },
+    createScreening: async (data) => {
+      if (!data.patientId) {
+        throw new ApiError('Paciente é obrigatório para a triagem.', 400, {
+          patientId: ['Selecione ou informe um paciente.'],
+        })
+      }
+      const selectedRisk = data.riskClassificationId
+        ? riskClassifications.find((rc) => rc.id === data.riskClassificationId) ?? null
+        : null
+      const selectedSymptoms = (data.symptomIds ?? [])
+        .map((sId) => symptoms.find((s) => s.id === sId))
+        .filter((s): s is Symptom => s !== undefined)
+
+      const screening: Screening = {
+        id: crypto.randomUUID(),
+        patientId: data.patientId,
+        doctorId: data.doctorId ?? null,
+        riskClassification: selectedRisk,
+        status: data.status ?? 'AGUARDANDO',
+        screeningDate: data.screeningDate || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        notes: data.notes ?? null,
+        symptoms: selectedSymptoms,
+      }
+      screenings.unshift(screening)
+      return screening
+    },
+    updateScreening: async (id, data) => {
+      const index = screenings.findIndex((s) => s.id === id)
+      if (index < 0) throw new ApiError('Triagem não encontrada.', 404)
+      const selectedRisk = data.riskClassificationId
+        ? riskClassifications.find((rc) => rc.id === data.riskClassificationId) ?? null
+        : null
+      const selectedSymptoms = (data.symptomIds ?? [])
+        .map((sId) => symptoms.find((s) => s.id === sId))
+        .filter((s): s is Symptom => s !== undefined)
+
+      const updated: Screening = {
+        ...screenings[index],
+        patientId: data.patientId,
+        doctorId: data.doctorId ?? null,
+        riskClassification: selectedRisk,
+        status: data.status ?? screenings[index].status,
+        screeningDate: data.screeningDate || screenings[index].screeningDate,
+        updatedAt: new Date().toISOString(),
+        notes: data.notes ?? null,
+        symptoms: selectedSymptoms,
+      }
+      screenings[index] = updated
+      return updated
+    },
+    updateScreeningStatus: async (id, status: ScreeningStatus) => {
+      const index = screenings.findIndex((s) => s.id === id)
+      if (index < 0) throw new ApiError('Triagem não encontrada.', 404)
+      screenings[index].status = status
+      screenings[index].updatedAt = new Date().toISOString()
+      return screenings[index]
+    },
+    deleteScreening: async (id) => {
+      const index = screenings.findIndex((s) => s.id === id)
+      if (index < 0) throw new ApiError('Triagem não encontrada.', 404)
+      screenings.splice(index, 1)
+    },
+    listRiskClassifications: async () => [...riskClassifications],
+    listSymptoms: async () => [...symptoms],
   }
 }

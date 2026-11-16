@@ -123,3 +123,62 @@ export interface PatientsService {
   updateVaccine: (patientId: string, vaccineId: string, data: PatientVaccineInput) => Promise<PatientVaccine>
   deleteVaccine: (patientId: string, vaccineId: string) => Promise<void>
 }
+
+export type ScreeningStatus = 'AGUARDANDO' | 'ATENDIDO' | 'DESISTIU'
+
+export const screeningStatusLabels: Record<ScreeningStatus, string> = {
+  AGUARDANDO: 'Aguardando',
+  ATENDIDO: 'Atendido',
+  DESISTIU: 'Desistiu',
+}
+
+export interface RiskClassification {
+  id: string
+  name: string
+  description?: string | null
+  priorityLevel: number
+  active?: boolean
+}
+
+export interface Symptom {
+  id: string
+  name: string
+  description?: string | null
+  active?: boolean
+}
+
+export interface Screening {
+  id: string
+  patientId: string
+  doctorId?: string | null
+  riskClassification?: RiskClassification | null
+  status: ScreeningStatus
+  screeningDate: string
+  updatedAt?: string
+  notes?: string | null
+  symptoms?: Symptom[]
+}
+
+export interface ScreeningInput {
+  patientId: string
+  doctorId?: string | null
+  riskClassificationId?: string | null
+  status?: ScreeningStatus
+  screeningDate?: string | null
+  notes?: string | null
+  symptomIds?: string[]
+}
+
+export interface TriageService {
+  listScreenings: (
+    filter?: { patientId?: string; status?: ScreeningStatus },
+    signal?: AbortSignal,
+  ) => Promise<Screening[]>
+  getScreening: (id: string, signal?: AbortSignal) => Promise<Screening>
+  createScreening: (data: ScreeningInput) => Promise<Screening>
+  updateScreening: (id: string, data: ScreeningInput) => Promise<Screening>
+  updateScreeningStatus: (id: string, status: ScreeningStatus) => Promise<Screening>
+  deleteScreening: (id: string) => Promise<void>
+  listRiskClassifications: (signal?: AbortSignal) => Promise<RiskClassification[]>
+  listSymptoms: (signal?: AbortSignal) => Promise<Symptom[]>
+}
