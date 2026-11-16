@@ -1007,7 +1007,7 @@ tbody tr:nth-child(2n) .small {
 
 /* Accessible native dialog */
 .record-dialog {
-  width: min(510px, calc(100vw - 32px));
+  width: min(600px, calc(100vw - 32px));
   max-height: calc(100svh - 32px);
   padding: 27px;
   border: 1px solid #dde5dc;
@@ -1048,12 +1048,180 @@ tbody tr:nth-child(2n) .small {
 .record-dialog .muted {
   font-size: 12px;
 }
+
+/* Dialog Tabs Navigation */
+.dialog-tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--border);
+  margin-top: 18px;
+  margin-bottom: 20px;
+  padding-bottom: 2px;
+  overflow-x: auto;
+}
+.tab-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-radius: 6px 6px 0 0;
+  white-space: nowrap;
+}
+.tab-button:hover {
+  color: #104c3f;
+  background: #f4f7f4;
+}
+.tab-button.active {
+  color: #156653;
+  border-bottom-color: #156653;
+  font-weight: 650;
+  background: #edf4e7;
+}
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 10px;
+  background: #ddedb4;
+  color: #164b3f;
+}
+.tab-button.active .tab-badge {
+  background: #156653;
+  color: #ffffff;
+}
+
+/* Sub-card & subform in dialogs */
+.sub-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.sub-panel-intro {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.sub-panel-intro p {
+  font-size: 12px;
+  color: var(--muted);
+}
+.sub-form-card {
+  padding: 16px;
+  background: #f8faf8;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.sub-form-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #203731;
+}
+.sub-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+.sub-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+.sub-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.sub-item-card {
+  padding: 12px 14px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.sub-item-card:hover {
+  border-color: #cbd8d1;
+}
+.sub-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.sub-item-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #203731;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sub-item-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: #eef3ed;
+  color: #355348;
+}
+.sub-item-desc {
+  font-size: 12px;
+  color: #4f635a;
+  line-height: 1.4;
+}
+.sub-item-meta {
+  font-size: 11px;
+  color: var(--muted);
+}
+.sub-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.empty-sub-state {
+  text-align: center;
+  padding: 24px 16px;
+  background: #fbfcfb;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .form-fields {
   display: flex;
   flex-direction: column;
   gap: 19px;
   border: 0;
-  margin: 25px 0 0;
+  margin: 15px 0 0;
   padding: 0;
   min-width: 0;
 }

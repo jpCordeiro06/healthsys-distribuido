@@ -58,6 +58,36 @@ export interface UsersService {
 }
 
 
+export interface PatientAllergy {
+  id: string
+  alergeno: string
+  reacao: string | null
+  observacoes: string | null
+}
+
+export interface PatientAllergyInput {
+  alergeno: string
+  reacao?: string | null
+  observacoes?: string | null
+}
+
+export interface PatientVaccine {
+  id: string
+  vacina: string
+  dose: string
+  dataAplicacao: string
+  lote: string | null
+  proximaDose: string | null
+}
+
+export interface PatientVaccineInput {
+  vacina: string
+  dose: string
+  dataAplicacao: string
+  lote?: string | null
+  proximaDose?: string | null
+}
+
 export interface Patient {
   id: string
   nome: string
@@ -65,6 +95,8 @@ export interface Patient {
   dataNascimento: string
   sexo: string
   telefone: string | null
+  alergias?: PatientAllergy[]
+  vacinas?: PatientVaccine[]
 }
 
 export interface PatientInput {
@@ -73,6 +105,8 @@ export interface PatientInput {
   dataNascimento: string
   sexo: string
   telefone: string
+  alergias?: PatientAllergyInput[]
+  vacinas?: PatientVaccineInput[]
 }
 
 export interface PatientsService {
@@ -80,4 +114,12 @@ export interface PatientsService {
   createPatient: (data: PatientInput) => Promise<Patient>
   updatePatient: (id: string, data: PatientInput) => Promise<Patient>
   deletePatient: (id: string) => Promise<void>
+  listAllergies: (patientId: string, signal?: AbortSignal) => Promise<PatientAllergy[]>
+  addAllergy: (patientId: string, data: PatientAllergyInput) => Promise<PatientAllergy>
+  updateAllergy: (patientId: string, allergyId: string, data: PatientAllergyInput) => Promise<PatientAllergy>
+  deleteAllergy: (patientId: string, allergyId: string) => Promise<void>
+  listVaccines: (patientId: string, signal?: AbortSignal) => Promise<PatientVaccine[]>
+  addVaccine: (patientId: string, data: PatientVaccineInput) => Promise<PatientVaccine>
+  updateVaccine: (patientId: string, vaccineId: string, data: PatientVaccineInput) => Promise<PatientVaccine>
+  deleteVaccine: (patientId: string, vaccineId: string) => Promise<void>
 }

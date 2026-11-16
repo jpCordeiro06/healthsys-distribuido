@@ -133,3 +133,86 @@ test('patient errors can be retried and an expired JWT redirects to login', asyn
   await expect(page).toHaveURL(/\/login$/)
   await expect(page.getByRole('status')).toContainText('Sua sessão expirou')
 })
+
+test('patient modal supports allergies and vaccines tabs with API integration and CRUD operations', async ({ page }) => {
+  const allergiesList = [
+    { id: 'allergy-1', alergeno: 'Penicilina', reacao: 'Erupção cutânea', observacoes: 'Desde 2018' },
+  ]
+  const vaccinesList = [
+    { id: 'vaccine-1', vacina: 'Febre Amarela', dose: 'Dose única', dataAplicacao: '2021-03-15', lote: 'FA2021', proximaDose: null },
+  ]
+
+  await page.route(`${api}/patients**`, (route) => {
+    const url = route.request().url()
+    const method = route.request().method()
+
+    if (url.includes('/allergies/allergy-1') && method === 'DELETE') {
+      return route.fulfill({ status: 204 })
+    }
+    if (url.includes('/allergies/allergy-1') && method === 'PUT') {
+      const data = route.request().postDataJSON()
+      return route.fulfill({ json: { id: 'allergy-1', ...data } })
+    }
+    if (url.endsWith('/allergies') && method === 'POST') {
+      const data = route.request().postDataJSON()
+      return route.fulfill({ status: 201, json: { id: 'allergy-2', ...data } })
+    }
+    if (url.endsWith('/allergies') && method === 'GET') {
+      return route.fulfill({ json: allergiesList })
+    }
+
+    if (url.includes('/vaccines/vaccine-1') && method === 'DELETE') {
+      return route.fulfill({ status: 204 })
+    }
+    if (url.includes('/vaccines/vaccine-1') && method === 'PUT') {
+      const data = route.request().postDataJSON()
+      return route.fulfill({ json: { id: 'vaccine-1', ...data } })
+    }
+    if (url.endsWith('/vaccines') && method === 'POST') {
+      const data = route.request().postDataJSON()
+      return route.fulfill({ status: 201, json: { id: 'vaccine-2', ...data } })
+    }
+    if (url.endsWith('/vaccines') && method === 'GET') {
+      return route.fulfill({ json: vaccinesList })
+    }
+
+    if (method === 'GET') {
+      return route.fulfill({ json: pageOf([{ ...patient, id: 'patient-1' }]) })
+    }
+    return route.fulfill({ json: {} })
+  })
+
+  await signIn(page)
+  await page.getByRole('button', { name: 'Editar Ana Teste', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+
+  // Tab Alergias
+  await dialog.getByRole('tab', { name: /Alergias/ }).click()
+  await expect(dialog.getByText('Penicilina')).toBeVisible()
+  await expect(dialog.getByText('Erupção cutânea')).toBeVisible()
+
+  // Add new allergy
+  await dialog.getByRole('button', { name: 'Nova alergia' }).click()
+  await dialog.getByLabel(/^Alérgeno/).fill('Dipirona')
+  await dialog.getByLabel('Reação observada').fill('Edema labial')
+  await dialog.getByRole('button', { name: 'Adicionar alergia' }).click()
+  await expect(dialog.getByText('Dipirona')).toBeVisible()
+
+  // Tab Vacinas
+  await dialog.getByRole('tab', { name: /Vacinas/ }).click()
+  await expect(dialog.getByText('Febre Amarela')).toBeVisible()
+  await expect(dialog.getByText('Dose única')).toBeVisible()
+
+  // Add new vaccine
+  await dialog.getByRole('button', { name: 'Nova vacina' }).click()
+  await dialog.getByLabel(/^Nome da vacina/).fill('Influenza')
+  await dialog.getByLabel(/^Dose/).fill('Anual')
+  await dialog.getByLabel(/^Data de aplicação/).fill('2024-04-10')
+  await dialog.getByRole('button', { name: 'Adicionar vacina' }).click()
+  await expect(dialog.getByText('Influenza')).toBeVisible()
+
+  // Close dialog
+  await dialog.getByRole('button', { name: 'Cancelar' }).click()
+  await expect(dialog).not.toBeVisible()
+})
