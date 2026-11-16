@@ -82,4 +82,30 @@ class ScreeningServiceTest {
 
         assertThrows(ResponseStatusException.class, () -> screeningService.getById(nonExistentId));
     }
+
+    @Test
+    void shouldListAllScreeningsWhenNoFilterProvided() {
+        Screening screening = new Screening(UUID.randomUUID(), null, null, ScreeningStatus.AGUARDANDO, null, null, null);
+        when(screeningRepository.findAll()).thenReturn(java.util.List.of(screening));
+
+        java.util.List<Screening> result = screeningService.list(null, null);
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        verify(screeningRepository).findAll();
+    }
+
+    @Test
+    void shouldListFilteredScreeningsWhenFilterProvided() {
+        UUID patientId = UUID.randomUUID();
+        Screening screening = new Screening(patientId, null, null, ScreeningStatus.AGUARDANDO, null, null, null);
+        when(screeningRepository.findByFilter(patientId, ScreeningStatus.AGUARDANDO))
+                .thenReturn(java.util.List.of(screening));
+
+        java.util.List<Screening> result = screeningService.list(patientId, ScreeningStatus.AGUARDANDO);
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        verify(screeningRepository).findByFilter(patientId, ScreeningStatus.AGUARDANDO);
+    }
 }
