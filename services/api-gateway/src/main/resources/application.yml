@@ -14,6 +14,10 @@ spring:
               uri: ${HEALTHSYS_PATIENT_SERVICE_URL:http://localhost:8082}
               predicates:
                 - Path=/api/v1/patients,/api/v1/patients/**
+            - id: triage-service
+              uri: ${HEALTHSYS_TRIAGE_SERVICE_URL:http://localhost:8084}
+              predicates:
+                - Path=/api/v1/screenings,/api/v1/screenings/**,/api/v1/risk-classifications,/api/v1/risk-classifications/**,/api/v1/symptoms,/api/v1/symptoms/**
           globalcors:
             add-to-simple-url-handler-mapping: true
             cors-configurations:
