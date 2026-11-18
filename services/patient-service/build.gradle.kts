@@ -6,4 +6,6 @@ dependencies {
     implementation(project(":shared:security"))
     implementation(project(":shared:proto"))
     implementation("io.grpc:grpc-netty-shaded:1.68.1")
+    implementation("org.springframework.boot:spring-boot-starter-cache")
+    implementation("org.springframework.boot:spring-boot-starter-data-redis")
 }

@@ -12,6 +12,8 @@ import br.edu.healthsys.patient.domain.PatientVaccine;
 import br.edu.healthsys.patient.repository.PatientRepository;
 import br.edu.healthsys.patient.util.CpfValidator;
 import java.util.UUID;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -39,9 +41,11 @@ public class PatientService {
     @Transactional(readOnly = true)
     public Page<PatientResponse> list(Pageable pageable) { return repository.findAll(pageable).map(PatientResponse::from); }
 
+    @Cacheable(value = "patients", key = "#id")
     @Transactional(readOnly = true)
     public PatientResponse get(UUID id) { return PatientResponse.from(findPatient(id)); }
 
+    @CacheEvict(value = "patients", key = "#id")
     public PatientResponse update(UUID id, PatientRequest request) {
         Patient patient = findPatient(id);
         String cpf = CpfValidator.normalize(request.cpf());
@@ -53,36 +57,49 @@ public class PatientService {
         catch (DataIntegrityViolationException exception) { throw conflict("Ja existe um paciente cadastrado com este CPF."); }
     }
 
+    @CacheEvict(value = "patients", key = "#id")
     public void delete(UUID id) { repository.delete(findPatient(id)); }
 
+    @CacheEvict(value = "patients", key = "#patientId")
     public PatientAllergyResponse addAllergy(UUID patientId, PatientAllergyRequest request) {
         Patient patient = findPatient(patientId); PatientAllergy allergy = toAllergy(request);
         patient.addAllergy(allergy); repository.save(patient); return PatientAllergyResponse.from(allergy);
     }
+
     @Transactional(readOnly = true)
     public java.util.List<PatientAllergyResponse> listAllergies(UUID patientId) {
         return findPatient(patientId).getAlergias().stream().map(PatientAllergyResponse::from).toList();
     }
+
+    @CacheEvict(value = "patients", key = "#patientId")
     public PatientAllergyResponse updateAllergy(UUID patientId, UUID allergyId, PatientAllergyRequest request) {
         PatientAllergy allergy = findAllergy(patientId, allergyId); allergy.update(request.alergeno().trim(), normalize(request.reacao()), normalize(request.observacoes()));
         return PatientAllergyResponse.from(allergy);
     }
+
+    @CacheEvict(value = "patients", key = "#patientId")
     public void deleteAllergy(UUID patientId, UUID allergyId) { findPatient(patientId).removeAllergy(findAllergy(patientId, allergyId)); }
 
+    @CacheEvict(value = "patients", key = "#patientId")
     public PatientVaccineResponse addVaccine(UUID patientId, PatientVaccineRequest request) {
         Patient patient = findPatient(patientId); PatientVaccine vaccine = toVaccine(request);
         patient.addVaccine(vaccine); repository.save(patient); return PatientVaccineResponse.from(vaccine);
     }
+
     @Transactional(readOnly = true)
     public java.util.List<PatientVaccineResponse> listVaccines(UUID patientId) {
         return findPatient(patientId).getVacinas().stream().map(PatientVaccineResponse::from).toList();
     }
+
+    @CacheEvict(value = "patients", key = "#patientId")
     public PatientVaccineResponse updateVaccine(UUID patientId, UUID vaccineId, PatientVaccineRequest request) {
         PatientVaccine vaccine = findVaccine(patientId, vaccineId);
         if (request.proximaDose() != null && request.proximaDose().isBefore(request.dataAplicacao())) throw badRequest("A proxima dose nao pode ser anterior a data de aplicacao.");
         vaccine.update(request.vacina().trim(), request.dose().trim(), request.dataAplicacao(), normalize(request.lote()), request.proximaDose());
         return PatientVaccineResponse.from(vaccine);
     }
+
+    @CacheEvict(value = "patients", key = "#patientId")
     public void deleteVaccine(UUID patientId, UUID vaccineId) { findPatient(patientId).removeVaccine(findVaccine(patientId, vaccineId)); }
 
     private PatientAllergy toAllergy(PatientAllergyRequest r) { return new PatientAllergy(r.alergeno().trim(), normalize(r.reacao()), normalize(r.observacoes())); }
@@ -93,11 +110,11 @@ public class PatientService {
     private Patient findPatient(UUID id) { return repository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Paciente nao encontrado.")); }
     private PatientAllergy findAllergy(UUID patientId, UUID allergyId) {
         return findPatient(patientId).getAlergias().stream().filter(a -> a.getId().equals(allergyId)).findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alergia nao encontrada para este paciente."));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alergia nao encontrada para este paciente."));
     }
     private PatientVaccine findVaccine(UUID patientId, UUID vaccineId) {
         return findPatient(patientId).getVacinas().stream().filter(v -> v.getId().equals(vaccineId)).findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vacina nao encontrada para este paciente."));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vacina nao encontrada para este paciente."));
     }
     private String normalize(String value) { return value == null || value.isBlank() ? null : value.trim(); }
     private ResponseStatusException conflict(String message) { return new ResponseStatusException(HttpStatus.CONFLICT, message); }
