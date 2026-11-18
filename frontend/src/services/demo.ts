@@ -18,6 +18,14 @@ import type {
   NotificationFilter,
   NotificationInput,
   NotificationsService,
+  MedicalRecord,
+  MedicalExam,
+  MedicalExamInput,
+  ExamResult,
+  ExamResultInput,
+  Diagnosis,
+  DiagnosisInput,
+  MedicalRecordsService,
 } from '../types'
 
 export const demoEnabled = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO === 'true'
@@ -708,6 +716,368 @@ export function createDemoNotificationsService(): NotificationsService {
       const index = channels.findIndex((c) => c.id === id)
       if (index < 0) throw new ApiError('Canal de notificação não encontrado.', 404)
       channels.splice(index, 1)
+    },
+  }
+}
+
+export function createDemoMedicalRecordsService(): MedicalRecordsService {
+  const records: MedicalRecord[] = [
+    {
+      id: 'demo-record-1',
+      patientId: 'demo-patient-1',
+      createdAt: '2024-01-15T09:00:00',
+      updatedAt: '2024-06-20T14:30:00',
+      diagnoses: [
+        {
+          id: 'demo-diag-1',
+          medicalRecordId: 'demo-record-1',
+          patientId: 'demo-patient-1',
+          description: 'Rinite Alérgica Perene (CID J30.0)',
+          doctorId: 'demo-user-2',
+          date: '2024-01-15T09:30:00',
+          laboratoryName: 'Clínica Geral / Alergologia',
+          validated: true,
+        },
+        {
+          id: 'demo-diag-2',
+          medicalRecordId: 'demo-record-1',
+          patientId: 'demo-patient-1',
+          description: 'Hipertensão Essencial Estágio 1 (CID I10)',
+          doctorId: 'demo-user-2',
+          date: '2024-06-20T14:15:00',
+          laboratoryName: 'Cardiologia',
+          validated: true,
+        },
+      ],
+      exams: [
+        {
+          id: 'demo-exam-1',
+          medicalRecordId: 'demo-record-1',
+          patientId: 'demo-patient-1',
+          type: 'Hemograma Completo com Plaquetas',
+          date: '2024-06-18T08:00:00',
+          doctorId: 'demo-user-2',
+          hasResult: true,
+          results: [
+            {
+              id: 'demo-result-1',
+              medicalExamId: 'demo-exam-1',
+              resultDate: '2024-06-19T10:00:00',
+              resultSummary:
+                'Hemoglobina: 13.5 g/dL, Leucócitos: 6.800/mm³, Plaquetas: 240.000/mm³ (Parâmetros normais)',
+              detailedReport:
+                'Eritrograma sem alterações morfológicas. Série branca com contagem absoluta e relativa dentro da normalidade. Plaquetas com volume e agregação normais.',
+              laboratoryName: 'Laboratório Central Diagnósticos',
+              validated: true,
+            },
+          ],
+        },
+        {
+          id: 'demo-exam-2',
+          medicalRecordId: 'demo-record-1',
+          patientId: 'demo-patient-1',
+          type: 'Eletrocardiograma de Repouso',
+          date: '2024-06-19T11:30:00',
+          doctorId: 'demo-user-2',
+          hasResult: true,
+          results: [
+            {
+              id: 'demo-result-2',
+              medicalExamId: 'demo-exam-2',
+              resultDate: '2024-06-19T12:00:00',
+              resultSummary:
+                'Ritmo sinusal regular, FC 72 bpm, sem alterações agudas do segmento ST-T',
+              detailedReport:
+                'Traçado dentro dos limites da normalidade para a faixa etária. Eixo elétrico preservado (SÂQRS a +60°). Condução AV normal.',
+              laboratoryName: 'Setor de Métodos Gráficos',
+              validated: true,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'demo-record-2',
+      patientId: 'demo-patient-2',
+      createdAt: '2024-08-10T09:00:00',
+      updatedAt: '2024-08-12T08:00:00',
+      diagnoses: [
+        {
+          id: 'demo-diag-3',
+          medicalRecordId: 'demo-record-2',
+          patientId: 'demo-patient-2',
+          description: 'Gastrite Aguda (CID K29.1)',
+          doctorId: 'demo-user-2',
+          date: '2024-08-10T10:00:00',
+          laboratoryName: 'Gastroenterologia',
+          validated: false,
+        },
+      ],
+      exams: [
+        {
+          id: 'demo-exam-3',
+          medicalRecordId: 'demo-record-2',
+          patientId: 'demo-patient-2',
+          type: 'Endoscopia Digestiva Alta',
+          date: '2024-08-12T07:30:00',
+          doctorId: 'demo-user-2',
+          hasResult: false,
+          results: [],
+        },
+      ],
+    },
+  ]
+
+  function findRecordByPatient(patientId: string): MedicalRecord | undefined {
+    return records.find((r) => r.patientId === patientId)
+  }
+
+  return {
+    getRecordByPatientId: async (patientId: string) => {
+      const record = findRecordByPatient(patientId)
+      return record ?? null
+    },
+
+    getRecord: async (id: string) => {
+      const record = records.find((r) => r.id === id)
+      if (!record) throw new ApiError('Prontuário não encontrado.', 404)
+      return record
+    },
+
+    createRecord: async (patientId: string) => {
+      const existing = findRecordByPatient(patientId)
+      if (existing) {
+        throw new ApiError('Prontuário já existe para este paciente.', 409)
+      }
+      const record: MedicalRecord = {
+        id: crypto.randomUUID(),
+        patientId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        exams: [],
+        diagnoses: [],
+      }
+      records.push(record)
+      return record
+    },
+
+    createExam: async (data: MedicalExamInput) => {
+      if (!data.type?.trim()) {
+        throw new ApiError('Tipo de exame é obrigatório.', 400, {
+          type: ['Informe o tipo de exame.'],
+        })
+      }
+      const record = records.find((r) => r.id === data.medicalRecordId)
+      if (!record) throw new ApiError('Prontuário não encontrado.', 404)
+
+      const exam: MedicalExam = {
+        id: crypto.randomUUID(),
+        medicalRecordId: data.medicalRecordId,
+        patientId: record.patientId,
+        type: data.type.trim(),
+        date: data.date || new Date().toISOString(),
+        doctorId: data.doctorId ?? null,
+        hasResult: data.hasResult ?? false,
+        results: [],
+      }
+      record.exams.push(exam)
+      record.updatedAt = new Date().toISOString()
+      return exam
+    },
+
+    updateExam: async (id: string, data: MedicalExamInput) => {
+      for (const record of records) {
+        const examIndex = record.exams.findIndex((e) => e.id === id)
+        if (examIndex >= 0) {
+          const current = record.exams[examIndex]
+          const updated: MedicalExam = {
+            ...current,
+            type: data.type ? data.type.trim() : current.type,
+            date: data.date ? data.date : current.date,
+            doctorId: data.doctorId !== undefined ? data.doctorId : current.doctorId,
+            hasResult: data.hasResult !== undefined ? data.hasResult : current.hasResult,
+          }
+          record.exams[examIndex] = updated
+          record.updatedAt = new Date().toISOString()
+          return updated
+        }
+      }
+      throw new ApiError('Exame médico não encontrado.', 404)
+    },
+
+    deleteExam: async (id: string) => {
+      for (const record of records) {
+        const examIndex = record.exams.findIndex((e) => e.id === id)
+        if (examIndex >= 0) {
+          record.exams.splice(examIndex, 1)
+          record.updatedAt = new Date().toISOString()
+          return
+        }
+      }
+      throw new ApiError('Exame médico não encontrado.', 404)
+    },
+
+    createExamResult: async (data: ExamResultInput) => {
+      if (!data.resultSummary?.trim()) {
+        throw new ApiError('Resumo do resultado é obrigatório.', 400, {
+          resultSummary: ['Informe o resumo do resultado do exame.'],
+        })
+      }
+      for (const record of records) {
+        const exam = record.exams.find((e) => e.id === data.medicalExamId)
+        if (exam) {
+          const result: ExamResult = {
+            id: crypto.randomUUID(),
+            medicalExamId: data.medicalExamId,
+            resultDate: data.resultDate || new Date().toISOString(),
+            resultSummary: data.resultSummary.trim(),
+            detailedReport: data.detailedReport?.trim() || null,
+            laboratoryName: data.laboratoryName?.trim() || null,
+            validated: data.validated ?? false,
+          }
+          exam.results.push(result)
+          exam.hasResult = true
+          record.updatedAt = new Date().toISOString()
+          return result
+        }
+      }
+      throw new ApiError('Exame médico não encontrado.', 404)
+    },
+
+    updateExamResult: async (id: string, data: ExamResultInput) => {
+      for (const record of records) {
+        for (const exam of record.exams) {
+          const resIndex = exam.results.findIndex((r) => r.id === id)
+          if (resIndex >= 0) {
+            const current = exam.results[resIndex]
+            const updated: ExamResult = {
+              ...current,
+              resultDate: data.resultDate || current.resultDate,
+              resultSummary: data.resultSummary ? data.resultSummary.trim() : current.resultSummary,
+              detailedReport:
+                data.detailedReport !== undefined
+                  ? data.detailedReport?.trim() || null
+                  : current.detailedReport,
+              laboratoryName:
+                data.laboratoryName !== undefined
+                  ? data.laboratoryName?.trim() || null
+                  : current.laboratoryName,
+              validated: data.validated !== undefined ? data.validated : current.validated,
+            }
+            exam.results[resIndex] = updated
+            record.updatedAt = new Date().toISOString()
+            return updated
+          }
+        }
+      }
+      throw new ApiError('Resultado de exame não encontrado.', 404)
+    },
+
+    validateExamResult: async (id: string, validated: boolean) => {
+      for (const record of records) {
+        for (const exam of record.exams) {
+          const resIndex = exam.results.findIndex((r) => r.id === id)
+          if (resIndex >= 0) {
+            exam.results[resIndex] = {
+              ...exam.results[resIndex],
+              validated,
+            }
+            record.updatedAt = new Date().toISOString()
+            return exam.results[resIndex]
+          }
+        }
+      }
+      throw new ApiError('Resultado de exame não encontrado.', 404)
+    },
+
+    deleteExamResult: async (id: string) => {
+      for (const record of records) {
+        for (const exam of record.exams) {
+          const resIndex = exam.results.findIndex((r) => r.id === id)
+          if (resIndex >= 0) {
+            exam.results.splice(resIndex, 1)
+            exam.hasResult = exam.results.length > 0
+            record.updatedAt = new Date().toISOString()
+            return
+          }
+        }
+      }
+      throw new ApiError('Resultado de exame não encontrado.', 404)
+    },
+
+    createDiagnosis: async (data: DiagnosisInput) => {
+      if (!data.description?.trim()) {
+        throw new ApiError('Descrição do diagnóstico é obrigatória.', 400, {
+          description: ['Informe a descrição do diagnóstico.'],
+        })
+      }
+      const record = records.find((r) => r.id === data.medicalRecordId)
+      if (!record) throw new ApiError('Prontuário não encontrado.', 404)
+
+      const diag: Diagnosis = {
+        id: crypto.randomUUID(),
+        medicalRecordId: data.medicalRecordId,
+        patientId: record.patientId,
+        description: data.description.trim(),
+        doctorId: data.doctorId ?? null,
+        date: data.date || new Date().toISOString(),
+        laboratoryName: data.laboratoryName?.trim() || null,
+        validated: data.validated ?? false,
+      }
+      record.diagnoses.push(diag)
+      record.updatedAt = new Date().toISOString()
+      return diag
+    },
+
+    updateDiagnosis: async (id: string, data: DiagnosisInput) => {
+      for (const record of records) {
+        const diagIndex = record.diagnoses.findIndex((d) => d.id === id)
+        if (diagIndex >= 0) {
+          const current = record.diagnoses[diagIndex]
+          const updated: Diagnosis = {
+            ...current,
+            description: data.description ? data.description.trim() : current.description,
+            doctorId: data.doctorId !== undefined ? data.doctorId : current.doctorId,
+            date: data.date ? data.date : current.date,
+            laboratoryName:
+              data.laboratoryName !== undefined
+                ? data.laboratoryName?.trim() || null
+                : current.laboratoryName,
+            validated: data.validated !== undefined ? data.validated : current.validated,
+          }
+          record.diagnoses[diagIndex] = updated
+          record.updatedAt = new Date().toISOString()
+          return updated
+        }
+      }
+      throw new ApiError('Diagnóstico não encontrado.', 404)
+    },
+
+    validateDiagnosis: async (id: string, validated: boolean) => {
+      for (const record of records) {
+        const diagIndex = record.diagnoses.findIndex((d) => d.id === id)
+        if (diagIndex >= 0) {
+          record.diagnoses[diagIndex] = {
+            ...record.diagnoses[diagIndex],
+            validated,
+          }
+          record.updatedAt = new Date().toISOString()
+          return record.diagnoses[diagIndex]
+        }
+      }
+      throw new ApiError('Diagnóstico não encontrado.', 404)
+    },
+
+    deleteDiagnosis: async (id: string) => {
+      for (const record of records) {
+        const diagIndex = record.diagnoses.findIndex((d) => d.id === id)
+        if (diagIndex >= 0) {
+          record.diagnoses.splice(diagIndex, 1)
+          record.updatedAt = new Date().toISOString()
+          return
+        }
+      }
+      throw new ApiError('Diagnóstico não encontrado.', 404)
     },
   }
 }

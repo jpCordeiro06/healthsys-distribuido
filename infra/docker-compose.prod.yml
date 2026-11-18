@@ -10,6 +10,7 @@ services:
     environment:
       HEALTHSYS_USER_SERVICE_URL: http://user-service:8081
       HEALTHSYS_PATIENT_SERVICE_URL: http://patient-service:8082
+      HEALTHSYS_MEDICAL_RECORD_SERVICE_URL: http://medical-record-service:8083
       HEALTHSYS_TRIAGE_SERVICE_URL: http://triage-service:8084
       HEALTHSYS_NOTIFICATION_SERVICE_URL: http://notification-service:8085
       SPRING_PROFILES_ACTIVE: production
@@ -95,11 +96,20 @@ services:
       target: production
     init: true
     environment:
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/${MONGO_DATABASE:-healthsys}
+      HEALTHSYS_PATIENT_GRPC_HOST: patient-service
+      HEALTHSYS_PATIENT_GRPC_PORT: 9082
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SPRING_PROFILES_ACTIVE: production
       SPRING_CONFIG_IMPORT: configtree:/run/secrets/
       SERVER_ERROR_INCLUDE_STACKTRACE: never
       SERVER_ERROR_INCLUDE_MESSAGE: never
       JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=60.0
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      kafka:
+        condition: service_started
     networks:
     - healthsys-network
     restart: unless-stopped

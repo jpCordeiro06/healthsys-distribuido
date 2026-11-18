@@ -3,11 +3,19 @@ import { ApiError } from '../api'
 import { PatientDialog } from '../components/PatientDialog'
 import { ConfirmDeleteDialog } from '../components/ConfirmDeleteDialog'
 import { Icon } from '../components/Icon'
-import { profileLabels, type Page, type Session, type Patient, type PatientsService } from '../types'
+import {
+  profileLabels,
+  type Page,
+  type Session,
+  type Patient,
+  type PatientsService,
+  type MedicalRecordsService,
+} from '../types'
 
 interface Props {
   session: Session
   service: PatientsService
+  recordsService?: MedicalRecordsService
   onExpired: () => void
 }
 
@@ -21,7 +29,7 @@ function initials(name: string) {
     .toUpperCase()
 }
 
-export function PatientsPage({ session, service, onExpired }: Props) {
+export function PatientsPage({ session, service, recordsService, onExpired }: Props) {
   const [page, setPage] = useState(0)
   const [refresh, setRefresh] = useState(0)
   const [data, setData] = useState<Page<Patient> | null>(null)
@@ -291,7 +299,9 @@ export function PatientsPage({ session, service, onExpired }: Props) {
         <PatientDialog
           key={editing.id}
           patient={editing}
+          session={session}
           service={service}
+          recordsService={recordsService}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null)
@@ -303,7 +313,9 @@ export function PatientsPage({ session, service, onExpired }: Props) {
       )}
       {creating && (
         <PatientDialog
+          session={session}
           service={service}
+          recordsService={recordsService}
           onClose={() => setCreating(false)}
           onSaved={created}
           onExpired={onExpired}

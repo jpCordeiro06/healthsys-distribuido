@@ -14,6 +14,10 @@ spring:
               uri: ${HEALTHSYS_PATIENT_SERVICE_URL:http://localhost:8082}
               predicates:
                 - Path=/api/v1/patients,/api/v1/patients/**
+            - id: medical-record-service
+              uri: ${HEALTHSYS_MEDICAL_RECORD_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/v1/medical-records,/api/v1/medical-records/**,/api/v1/medical-exams,/api/v1/medical-exams/**,/api/v1/exam-results,/api/v1/exam-results/**,/api/v1/diagnoses,/api/v1/diagnoses/**
             - id: triage-service
               uri: ${HEALTHSYS_TRIAGE_SERVICE_URL:http://localhost:8084}
               predicates:

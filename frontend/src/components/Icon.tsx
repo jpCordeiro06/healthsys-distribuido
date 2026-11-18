@@ -16,9 +16,23 @@ export type IconName =
   | 'mail'
   | 'filter'
   | 'radio'
+  | 'file'
+  | 'clipboard'
 
 const paths: Record<IconName, React.ReactNode> = {
   cross: <path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6Z" />,
+  file: (
+    <>
+      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+      <polyline points="14 2 14 8 20 8" />
+    </>
+  ),
+  clipboard: (
+    <>
+      <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+    </>
+  ),
   activity: <path d="M22 12h-4l-3 9L9 3l-3 9H2" />,
   bell: (
     <>

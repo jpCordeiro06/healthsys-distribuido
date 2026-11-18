@@ -1,7 +1,15 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { ApiError } from '../api'
 import type {
+  Diagnosis,
+  DiagnosisInput,
+  ExamResult,
+  ExamResultInput,
   FieldErrors,
+  MedicalExam,
+  MedicalExamInput,
+  MedicalRecord,
+  MedicalRecordsService,
   Patient,
   PatientAllergy,
   PatientAllergyInput,
@@ -9,12 +17,15 @@ import type {
   PatientVaccine,
   PatientVaccineInput,
   PatientsService,
+  Session,
 } from '../types'
 import { Icon } from './Icon'
 
 interface Props {
   patient?: Patient
+  session?: Session
   service: PatientsService
+  recordsService?: MedicalRecordsService
   onClose: () => void
   onSaved: () => void
   onExpired: () => void
@@ -49,14 +60,39 @@ function validCpf(cpf: string) {
 
 function formatDate(isoDate?: string | null) {
   if (!isoDate) return '—'
-  const parts = isoDate.split('-')
+  const datePart = isoDate.includes('T') ? isoDate.split('T')[0] : isoDate
+  const parts = datePart.split('-')
   if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`
   return isoDate
 }
 
-export function PatientDialog({ patient, service, onClose, onSaved, onExpired }: Props) {
+function formatDateTime(isoString?: string | null) {
+  if (!isoString) return '—'
+  try {
+    const date = new Date(isoString)
+    if (isNaN(date.getTime())) return isoString
+    return date.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return isoString
+  }
+}
+
+export function PatientDialog({
+  patient,
+  service,
+  recordsService,
+  onClose,
+  onSaved,
+  onExpired,
+}: Props) {
   const dialog = useRef<HTMLDialogElement>(null)
-  const [tab, setTab] = useState<'dados' | 'alergias' | 'vacinas'>('dados')
+  const [tab, setTab] = useState<'dados' | 'alergias' | 'vacinas' | 'historico'>('dados')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [errors, setErrors] = useState<FieldErrors>({})
@@ -97,6 +133,41 @@ export function PatientDialog({ patient, service, onClose, onSaved, onExpired }:
   const [vaccineLote, setVaccineLote] = useState('')
   const [vaccineProximaDose, setVaccineProximaDose] = useState('')
 
+  // Medical Record state
+  const [record, setRecord] = useState<MedicalRecord | null>(null)
+  const [recordLoading, setRecordLoading] = useState(() => Boolean(patient?.id && recordsService))
+  const [recordError, setRecordError] = useState('')
+  const [recordBusy, setRecordBusy] = useState(false)
+  const [historySection, setHistorySection] = useState<'all' | 'diagnoses' | 'exams'>('all')
+
+  // Diagnoses state
+  const [showDiagnosisForm, setShowDiagnosisForm] = useState(false)
+  const [editingDiagnosisId, setEditingDiagnosisId] = useState<string | null>(null)
+  const [diagnosisDescription, setDiagnosisDescription] = useState('')
+  const [diagnosisDate, setDiagnosisDate] = useState('')
+  const [diagnosisLabName, setDiagnosisLabName] = useState('')
+  const [diagnosisValidated, setDiagnosisValidated] = useState(false)
+  const [diagnosisError, setDiagnosisError] = useState('')
+
+  // Exams state
+  const [showExamForm, setShowExamForm] = useState(false)
+  const [editingExamId, setEditingExamId] = useState<string | null>(null)
+  const [examType, setExamType] = useState('')
+  const [examDate, setExamDate] = useState('')
+  const [examError, setExamError] = useState('')
+
+  // Exam Result state
+  const [activeResultExamId, setActiveResultExamId] = useState<string | null>(null)
+  const [showResultForm, setShowResultForm] = useState(false)
+  const [editingResultId, setEditingResultId] = useState<string | null>(null)
+  const [resultSummary, setResultSummary] = useState('')
+  const [resultDate, setResultDate] = useState('')
+  const [resultLabName, setResultLabName] = useState('')
+  const [resultReport, setResultReport] = useState('')
+  const [resultValidated, setResultValidated] = useState(false)
+  const [resultError, setResultError] = useState('')
+  const [expandedResults, setExpandedResults] = useState<Record<string, boolean>>({})
+
   useEffect(() => {
     const element = dialog.current
     const previousFocus = document.activeElement
@@ -111,26 +182,86 @@ export function PatientDialog({ patient, service, onClose, onSaved, onExpired }:
   useEffect(() => {
     if (!patient?.id) return
     const controller = new AbortController()
+    let active = true
 
     service
       .listAllergies(patient.id, controller.signal)
-      .then((data) => setAllergies(data))
+      .then((data) => {
+        if (active) setAllergies(data)
+      })
       .catch((err: unknown) => {
+        if (!active || (err instanceof Error && err.name === 'AbortError')) return
         if (err instanceof ApiError && err.status === 401) onExpired()
       })
-      .finally(() => setAllergiesLoading(false))
+      .finally(() => {
+        if (active) setAllergiesLoading(false)
+      })
 
     service
       .listVaccines(patient.id, controller.signal)
-      .then((data) => setVaccines(data))
+      .then((data) => {
+        if (active) setVaccines(data)
+      })
       .catch((err: unknown) => {
+        if (!active || (err instanceof Error && err.name === 'AbortError')) return
         if (err instanceof ApiError && err.status === 401) onExpired()
       })
-      .finally(() => setVaccinesLoading(false))
+      .finally(() => {
+        if (active) setVaccinesLoading(false)
+      })
 
-    return () => controller.abort()
+    return () => {
+      active = false
+      controller.abort()
+    }
   }, [patient?.id, service, onExpired])
 
+  useEffect(() => {
+    if (!patient?.id || !recordsService) return
+    const controller = new AbortController()
+    let active = true
+
+    recordsService
+      .getRecordByPatientId(patient.id, controller.signal)
+      .then((rec) => {
+        if (active) {
+          setRecord(rec)
+          setRecordError('')
+        }
+      })
+      .catch((err: unknown) => {
+        if (!active || (err instanceof Error && err.name === 'AbortError')) return
+        if (err instanceof ApiError && err.status === 401) {
+          onExpired()
+          return
+        }
+        setRecordError(
+          err instanceof Error && err.message
+            ? err.message
+            : 'Não foi possível carregar o histórico médico.',
+        )
+      })
+      .finally(() => {
+        if (active) setRecordLoading(false)
+      })
+
+    return () => {
+      active = false
+      controller.abort()
+    }
+  }, [patient?.id, recordsService, onExpired])
+
+  async function ensureRecord(): Promise<MedicalRecord> {
+    if (record) return record
+    if (!patient?.id || !recordsService) {
+      throw new Error('Serviço de prontuário indisponível.')
+    }
+    const created = await recordsService.createRecord(patient.id)
+    setRecord(created)
+    return created
+  }
+
+  // --- Allergies Handlers ---
   function resetAllergyForm() {
     setEditingAllergyId(null)
     setAllergyAlergeno('')
@@ -239,6 +370,7 @@ export function PatientDialog({ patient, service, onClose, onSaved, onExpired }:
     }
   }
 
+  // --- Vaccines Handlers ---
   function resetVaccineForm() {
     setEditingVaccineId(null)
     setVaccineVacina('')
@@ -371,6 +503,400 @@ export function PatientDialog({ patient, service, onClose, onSaved, onExpired }:
     }
   }
 
+  // --- Diagnoses Handlers ---
+  function resetDiagnosisForm() {
+    setEditingDiagnosisId(null)
+    setDiagnosisDescription('')
+    setDiagnosisDate('')
+    setDiagnosisLabName('')
+    setDiagnosisValidated(false)
+    setDiagnosisError('')
+    setShowDiagnosisForm(false)
+  }
+
+  function startEditDiagnosis(diag: Diagnosis) {
+    setEditingDiagnosisId(diag.id)
+    setDiagnosisDescription(diag.description)
+    setDiagnosisDate(diag.date ? diag.date.split('T')[0] : '')
+    setDiagnosisLabName(diag.laboratoryName ?? '')
+    setDiagnosisValidated(diag.validated)
+    setDiagnosisError('')
+    setShowDiagnosisForm(true)
+  }
+
+  async function handleSaveDiagnosis(event: FormEvent) {
+    event.preventDefault()
+    if (!recordsService) return
+    const descTrimmed = diagnosisDescription.trim()
+    if (!descTrimmed) {
+      setDiagnosisError('Informe a descrição do diagnóstico.')
+      return
+    }
+
+    setRecordBusy(true)
+    setDiagnosisError('')
+    try {
+      const activeRec = await ensureRecord()
+      const input: DiagnosisInput = {
+        medicalRecordId: activeRec.id,
+        description: descTrimmed,
+        date: diagnosisDate ? `${diagnosisDate}T12:00:00` : new Date().toISOString(),
+        laboratoryName: diagnosisLabName.trim() || null,
+        validated: diagnosisValidated,
+      }
+
+      if (editingDiagnosisId) {
+        const updated = await recordsService.updateDiagnosis(editingDiagnosisId, input)
+        setRecord((current) =>
+          current
+            ? {
+                ...current,
+                diagnoses: current.diagnoses.map((d) =>
+                  d.id === editingDiagnosisId ? updated : d,
+                ),
+                updatedAt: new Date().toISOString(),
+              }
+            : current,
+        )
+      } else {
+        const created = await recordsService.createDiagnosis(input)
+        setRecord((current) =>
+          current
+            ? {
+                ...current,
+                diagnoses: [created, ...current.diagnoses],
+                updatedAt: new Date().toISOString(),
+              }
+            : current,
+        )
+      }
+      resetDiagnosisForm()
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        onExpired()
+        return
+      }
+      setDiagnosisError(
+        err instanceof Error ? err.message : 'Não foi possível salvar o diagnóstico.',
+      )
+    } finally {
+      setRecordBusy(false)
+    }
+  }
+
+  async function handleToggleValidateDiagnosis(diag: Diagnosis) {
+    if (!recordsService) return
+    setRecordBusy(true)
+    try {
+      const updated = await recordsService.validateDiagnosis(diag.id, !diag.validated)
+      setRecord((current) =>
+        current
+          ? {
+              ...current,
+              diagnoses: current.diagnoses.map((d) => (d.id === diag.id ? updated : d)),
+            }
+          : current,
+      )
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        onExpired()
+        return
+      }
+    } finally {
+      setRecordBusy(false)
+    }
+  }
+
+  async function handleDeleteDiagnosis(diagId: string) {
+    if (!recordsService) return
+    setRecordBusy(true)
+    try {
+      await recordsService.deleteDiagnosis(diagId)
+      setRecord((current) =>
+        current
+          ? {
+              ...current,
+              diagnoses: current.diagnoses.filter((d) => d.id !== diagId),
+            }
+          : current,
+      )
+      if (editingDiagnosisId === diagId) resetDiagnosisForm()
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        onExpired()
+        return
+      }
+    } finally {
+      setRecordBusy(false)
+    }
+  }
+
+  // --- Exams Handlers ---
+  function resetExamForm() {
+    setEditingExamId(null)
+    setExamType('')
+    setExamDate('')
+    setExamError('')
+    setShowExamForm(false)
+  }
+
+  function startEditExam(exam: MedicalExam) {
+    setEditingExamId(exam.id)
+    setExamType(exam.type)
+    setExamDate(exam.date ? exam.date.split('T')[0] : '')
+    setExamError('')
+    setShowExamForm(true)
+  }
+
+  async function handleSaveExam(event: FormEvent) {
+    event.preventDefault()
+    if (!recordsService) return
+    const typeTrimmed = examType.trim()
+    if (!typeTrimmed) {
+      setExamError('Informe o tipo de exame.')
+      return
+    }
+
+    setRecordBusy(true)
+    setExamError('')
+    try {
+      const activeRec = await ensureRecord()
+      const input: MedicalExamInput = {
+        medicalRecordId: activeRec.id,
+        type: typeTrimmed,
+        date: examDate ? `${examDate}T08:00:00` : new Date().toISOString(),
+      }
+
+      if (editingExamId) {
+        const updated = await recordsService.updateExam(editingExamId, input)
+        setRecord((current) =>
+          current
+            ? {
+                ...current,
+                exams: current.exams.map((e) => (e.id === editingExamId ? updated : e)),
+                updatedAt: new Date().toISOString(),
+              }
+            : current,
+        )
+      } else {
+        const created = await recordsService.createExam(input)
+        setRecord((current) =>
+          current
+            ? {
+                ...current,
+                exams: [created, ...current.exams],
+                updatedAt: new Date().toISOString(),
+              }
+            : current,
+        )
+      }
+      resetExamForm()
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        onExpired()
+        return
+      }
+      setExamError(err instanceof Error ? err.message : 'Não foi possível salvar o exame.')
+    } finally {
+      setRecordBusy(false)
+    }
+  }
+
+  async function handleDeleteExam(examId: string) {
+    if (!recordsService) return
+    setRecordBusy(true)
+    try {
+      await recordsService.deleteExam(examId)
+      setRecord((current) =>
+        current
+          ? {
+              ...current,
+              exams: current.exams.filter((e) => e.id !== examId),
+            }
+          : current,
+      )
+      if (editingExamId === examId) resetExamForm()
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        onExpired()
+        return
+      }
+    } finally {
+      setRecordBusy(false)
+    }
+  }
+
+  // --- Exam Results Handlers ---
+  function resetResultForm() {
+    setActiveResultExamId(null)
+    setEditingResultId(null)
+    setResultSummary('')
+    setResultDate('')
+    setResultLabName('')
+    setResultReport('')
+    setResultValidated(false)
+    setResultError('')
+    setShowResultForm(false)
+  }
+
+  function startAddResult(examId: string) {
+    setActiveResultExamId(examId)
+    setEditingResultId(null)
+    setResultSummary('')
+    setResultDate(today)
+    setResultLabName('')
+    setResultReport('')
+    setResultValidated(false)
+    setResultError('')
+    setShowResultForm(true)
+  }
+
+  function startEditResult(examId: string, res: ExamResult) {
+    setActiveResultExamId(examId)
+    setEditingResultId(res.id)
+    setResultSummary(res.resultSummary)
+    setResultDate(res.resultDate ? res.resultDate.split('T')[0] : '')
+    setResultLabName(res.laboratoryName ?? '')
+    setResultReport(res.detailedReport ?? '')
+    setResultValidated(res.validated)
+    setResultError('')
+    setShowResultForm(true)
+  }
+
+  async function handleSaveResult(event: FormEvent) {
+    event.preventDefault()
+    if (!recordsService || !activeResultExamId) return
+    const summaryTrimmed = resultSummary.trim()
+    if (!summaryTrimmed) {
+      setResultError('Informe o resumo ou conclusão do laudo.')
+      return
+    }
+
+    setRecordBusy(true)
+    setResultError('')
+    try {
+      const input: ExamResultInput = {
+        medicalExamId: activeResultExamId,
+        resultSummary: summaryTrimmed,
+        resultDate: resultDate ? `${resultDate}T10:00:00` : new Date().toISOString(),
+        laboratoryName: resultLabName.trim() || null,
+        detailedReport: resultReport.trim() || null,
+        validated: resultValidated,
+      }
+
+      if (editingResultId) {
+        const updated = await recordsService.updateExamResult(editingResultId, input)
+        setRecord((current) =>
+          current
+            ? {
+                ...current,
+                exams: current.exams.map((e) =>
+                  e.id === activeResultExamId
+                    ? {
+                        ...e,
+                        hasResult: true,
+                        results: e.results.map((r) => (r.id === editingResultId ? updated : r)),
+                      }
+                    : e,
+                ),
+              }
+            : current,
+        )
+      } else {
+        const created = await recordsService.createExamResult(input)
+        setRecord((current) =>
+          current
+            ? {
+                ...current,
+                exams: current.exams.map((e) =>
+                  e.id === activeResultExamId
+                    ? {
+                        ...e,
+                        hasResult: true,
+                        results: [...e.results, created],
+                      }
+                    : e,
+                ),
+              }
+            : current,
+        )
+      }
+      setExpandedResults((prev) => ({ ...prev, [activeResultExamId]: true }))
+      resetResultForm()
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        onExpired()
+        return
+      }
+      setResultError(err instanceof Error ? err.message : 'Não foi possível salvar o laudo do exame.')
+    } finally {
+      setRecordBusy(false)
+    }
+  }
+
+  async function handleToggleValidateResult(examId: string, res: ExamResult) {
+    if (!recordsService) return
+    setRecordBusy(true)
+    try {
+      const updated = await recordsService.validateExamResult(res.id, !res.validated)
+      setRecord((current) =>
+        current
+          ? {
+              ...current,
+              exams: current.exams.map((e) =>
+                e.id === examId
+                  ? {
+                      ...e,
+                      results: e.results.map((r) => (r.id === res.id ? updated : r)),
+                    }
+                  : e,
+              ),
+            }
+          : current,
+      )
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        onExpired()
+        return
+      }
+    } finally {
+      setRecordBusy(false)
+    }
+  }
+
+  async function handleDeleteResult(examId: string, resultId: string) {
+    if (!recordsService) return
+    setRecordBusy(true)
+    try {
+      await recordsService.deleteExamResult(resultId)
+      setRecord((current) =>
+        current
+          ? {
+              ...current,
+              exams: current.exams.map((e) =>
+                e.id === examId
+                  ? {
+                      ...e,
+                      results: e.results.filter((r) => r.id !== resultId),
+                      hasResult: e.results.filter((r) => r.id !== resultId).length > 0,
+                    }
+                  : e,
+              ),
+            }
+          : current,
+      )
+      if (editingResultId === resultId) resetResultForm()
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        onExpired()
+        return
+      }
+    } finally {
+      setRecordBusy(false)
+    }
+  }
+
+  // --- Main Patient Submit ---
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const cleanCpf = cpf.replace(/\D/g, '')
@@ -436,6 +962,8 @@ export function PatientDialog({ patient, service, onClose, onSaved, onExpired }:
   const now = new Date()
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
+  const totalHistoryItems = (record?.diagnoses.length ?? 0) + (record?.exams.length ?? 0)
+
   return (
     <dialog
       ref={dialog}
@@ -456,7 +984,7 @@ export function PatientDialog({ patient, service, onClose, onSaved, onExpired }:
           className="icon-button"
           aria-label="Fechar formulário de paciente"
           onClick={onClose}
-          disabled={busy}
+          disabled={busy || recordBusy}
         >
           <Icon name="close" />
         </button>
@@ -464,7 +992,7 @@ export function PatientDialog({ patient, service, onClose, onSaved, onExpired }:
 
       <h2 id="patient-dialog-title">{patient ? 'Editar paciente' : 'Novo paciente'}</h2>
       <p className="muted" id="patient-dialog-description">
-        {patient ? 'Atualize os dados do paciente.' : 'Cadastre um paciente da unidade.'} Campos com
+        {patient ? 'Atualize os dados e consulte o histórico clínico do paciente.' : 'Cadastre um paciente da unidade.'} Campos com
         * são obrigatórios.
       </p>
 
@@ -504,11 +1032,30 @@ export function PatientDialog({ patient, service, onClose, onSaved, onExpired }:
           Vacinas
           {vaccines.length > 0 && <span className="tab-badge">{vaccines.length}</span>}
         </button>
+        <button
+          type="button"
+          role="tab"
+          id="tab-historico"
+          aria-selected={tab === 'historico'}
+          aria-controls="panel-historico"
+          className={tab === 'historico' ? 'tab-button active' : 'tab-button'}
+          onClick={() => setTab('historico')}
+        >
+          <Icon name="clipboard" size={16} />
+          Histórico médico
+          {totalHistoryItems > 0 && <span className="tab-badge">{totalHistoryItems}</span>}
+        </button>
       </div>
 
       <form onSubmit={(event) => void submit(event)}>
         {tab === 'dados' && (
-          <fieldset disabled={busy} className="form-fields" id="panel-dados" role="tabpanel" aria-labelledby="tab-dados">
+          <fieldset
+            disabled={busy}
+            className="form-fields"
+            id="panel-dados"
+            role="tabpanel"
+            aria-labelledby="tab-dados"
+          >
             {fields.map((field) => {
               const id = `patient-${field.name}`
               const error = errors[field.name]
@@ -614,7 +1161,12 @@ export function PatientDialog({ patient, service, onClose, onSaved, onExpired }:
         )}
 
         {tab === 'alergias' && (
-          <div className="sub-panel" id="panel-alergias" role="tabpanel" aria-labelledby="tab-alergias">
+          <div
+            className="sub-panel"
+            id="panel-alergias"
+            role="tabpanel"
+            aria-labelledby="tab-alergias"
+          >
             <div className="sub-panel-intro">
               <p>Cadastre e consulte as alergias conhecidas do paciente.</p>
               {!showAllergyForm && (
@@ -675,7 +1227,11 @@ export function PatientDialog({ patient, service, onClose, onSaved, onExpired }:
                   />
                 </div>
 
-                {allergyError && <div className="error-box" role="alert">{allergyError}</div>}
+                {allergyError && (
+                  <div className="error-box" role="alert">
+                    {allergyError}
+                  </div>
+                )}
 
                 <div className="sub-form-actions">
                   <button
@@ -751,7 +1307,12 @@ export function PatientDialog({ patient, service, onClose, onSaved, onExpired }:
         )}
 
         {tab === 'vacinas' && (
-          <div className="sub-panel" id="panel-vacinas" role="tabpanel" aria-labelledby="tab-vacinas">
+          <div
+            className="sub-panel"
+            id="panel-vacinas"
+            role="tabpanel"
+            aria-labelledby="tab-vacinas"
+          >
             <div className="sub-panel-intro">
               <p>Cadastre e consulte o histórico de vacinas do paciente.</p>
               {!showVaccineForm && (
@@ -844,7 +1405,11 @@ export function PatientDialog({ patient, service, onClose, onSaved, onExpired }:
                   />
                 </div>
 
-                {vaccineError && <div className="error-box" role="alert">{vaccineError}</div>}
+                {vaccineError && (
+                  <div className="error-box" role="alert">
+                    {vaccineError}
+                  </div>
+                )}
 
                 <div className="sub-form-actions">
                   <button
@@ -923,13 +1488,653 @@ export function PatientDialog({ patient, service, onClose, onSaved, onExpired }:
           </div>
         )}
 
-        {error && <div className="error-box" role="alert">{error}</div>}
+        {tab === 'historico' && (
+          <div
+            className="sub-panel medical-history-panel"
+            id="panel-historico"
+            role="tabpanel"
+            aria-labelledby="tab-historico"
+          >
+            {!patient?.id ? (
+              <div className="empty-sub-state history-unregistered-state">
+                <span className="empty-icon-wrapper">
+                  <Icon name="clipboard" size={32} />
+                </span>
+                <h3>Histórico clínico sob demanda</h3>
+                <p>
+                  O prontuário médico, exames e diagnósticos clínicos estarão disponíveis para
+                  edição e consulta assim que o cadastro básico do paciente for salvo.
+                </p>
+              </div>
+            ) : recordLoading ? (
+              <div className="table-state" style={{ minHeight: '180px' }}>
+                <span className="spinner teal" />
+                <p>Carregando prontuário e histórico clínico…</p>
+              </div>
+            ) : recordError ? (
+              <div className="error-box" role="alert">
+                <p>{recordError}</p>
+              </div>
+            ) : (
+              <>
+                <div className="history-summary-bar">
+                  <div className="history-stat">
+                    <span className="history-stat-label">Diagnósticos</span>
+                    <strong className="history-stat-value">
+                      {record?.diagnoses.length ?? 0}
+                    </strong>
+                  </div>
+                  <div className="history-stat">
+                    <span className="history-stat-label">Exames Solicitados</span>
+                    <strong className="history-stat-value">{record?.exams.length ?? 0}</strong>
+                  </div>
+                  <div className="history-stat">
+                    <span className="history-stat-label">Exames com Laudo</span>
+                    <strong className="history-stat-value">
+                      {record?.exams.filter((e) => e.hasResult).length ?? 0}
+                    </strong>
+                  </div>
+                  {record?.updatedAt && (
+                    <div className="history-stat meta-stat">
+                      <span className="history-stat-label">Última atualização</span>
+                      <span className="history-stat-date">
+                        {formatDateTime(record.updatedAt)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="history-section-filter">
+                  <button
+                    type="button"
+                    className={`filter-pill ${historySection === 'all' ? 'active' : ''}`}
+                    onClick={() => setHistorySection('all')}
+                  >
+                    Visão Geral
+                  </button>
+                  <button
+                    type="button"
+                    className={`filter-pill ${historySection === 'diagnoses' ? 'active' : ''}`}
+                    onClick={() => setHistorySection('diagnoses')}
+                  >
+                    Diagnósticos ({record?.diagnoses.length ?? 0})
+                  </button>
+                  <button
+                    type="button"
+                    className={`filter-pill ${historySection === 'exams' ? 'active' : ''}`}
+                    onClick={() => setHistorySection('exams')}
+                  >
+                    Exames & Laudos ({record?.exams.length ?? 0})
+                  </button>
+                </div>
+
+                {/* --- DIAGNOSES SECTION --- */}
+                {(historySection === 'all' || historySection === 'diagnoses') && (
+                  <section className="history-block" aria-labelledby="diagnoses-heading">
+                    <div className="history-block-header">
+                      <div className="history-block-title-group">
+                        <Icon name="activity" size={18} />
+                        <h3 id="diagnoses-heading">Diagnósticos Médicos</h3>
+                      </div>
+                      {!showDiagnosisForm && (
+                        <button
+                          type="button"
+                          className="button secondary"
+                          onClick={() => {
+                            resetDiagnosisForm()
+                            setDiagnosisDate(today)
+                            setShowDiagnosisForm(true)
+                          }}
+                          disabled={recordBusy}
+                        >
+                          <Icon name="plus" size={15} />
+                          Novo diagnóstico
+                        </button>
+                      )}
+                    </div>
+
+                    {showDiagnosisForm && (
+                      <div className="sub-form-card history-form-card">
+                        <span className="sub-form-title">
+                          {editingDiagnosisId ? 'Editar diagnóstico' : 'Registrar diagnóstico'}
+                        </span>
+                        <div className="field">
+                          <label htmlFor="diag-description">
+                            Hipótese Diagnóstica / CID / Descrição Clínica{' '}
+                            <span className="required-mark">*</span>
+                          </label>
+                          <textarea
+                            id="diag-description"
+                            rows={3}
+                            maxLength={500}
+                            placeholder="Ex.: Hipertensão Arterial Sistêmica Estágio 2 (CID I10) associada a cefaleia occipital."
+                            value={diagnosisDescription}
+                            onChange={(e) => setDiagnosisDescription(e.target.value)}
+                            required
+                          />
+                        </div>
+
+                        <div className="sub-fields-grid">
+                          <div className="field">
+                            <label htmlFor="diag-date">Data do diagnóstico</label>
+                            <input
+                              id="diag-date"
+                              type="date"
+                              max={today}
+                              value={diagnosisDate}
+                              onChange={(e) => setDiagnosisDate(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label htmlFor="diag-lab">Especialidade / Unidade Clínica</label>
+                            <input
+                              id="diag-lab"
+                              type="text"
+                              maxLength={100}
+                              placeholder="Ex.: Cardiologia, Clínica Geral"
+                              value={diagnosisLabName}
+                              onChange={(e) => setDiagnosisLabName(e.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="field-checkbox">
+                          <label htmlFor="diag-validated" className="checkbox-label">
+                            <input
+                              id="diag-validated"
+                              type="checkbox"
+                              checked={diagnosisValidated}
+                              onChange={(e) => setDiagnosisValidated(e.target.checked)}
+                            />
+                            <span>Diagnóstico validado e confirmado pelo médico</span>
+                          </label>
+                        </div>
+
+                        {diagnosisError && (
+                          <div className="error-box" role="alert">
+                            {diagnosisError}
+                          </div>
+                        )}
+
+                        <div className="sub-form-actions">
+                          <button
+                            type="button"
+                            className="button secondary"
+                            onClick={resetDiagnosisForm}
+                            disabled={recordBusy}
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            className="button primary"
+                            onClick={(e) => void handleSaveDiagnosis(e)}
+                            disabled={recordBusy}
+                          >
+                            {recordBusy ? (
+                              <span className="spinner" />
+                            ) : (
+                              <Icon name="check" size={16} />
+                            )}
+                            {editingDiagnosisId ? 'Atualizar diagnóstico' : 'Salvar diagnóstico'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {record && record.diagnoses.length > 0 ? (
+                      <div className="sub-list" aria-label="Lista de diagnósticos">
+                        {record.diagnoses.map((diag) => (
+                          <div key={diag.id} className="sub-item-card history-card">
+                            <div className="sub-item-main">
+                              <div className="sub-item-title">
+                                <span>{diag.description}</span>
+                                <span
+                                  className={`status-pill ${
+                                    diag.validated ? 'validated-pill' : 'pending-pill'
+                                  }`}
+                                >
+                                  {diag.validated ? 'Validado' : 'Pendente de validação'}
+                                </span>
+                              </div>
+                              <div className="sub-item-meta">
+                                <span>Data: {formatDate(diag.date)}</span>
+                                {diag.laboratoryName && (
+                                  <span> • Especialidade/Unidade: {diag.laboratoryName}</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="sub-item-actions">
+                              <button
+                                type="button"
+                                className="button quiet"
+                                title={
+                                  diag.validated
+                                    ? 'Marcar como pendente'
+                                    : 'Validar diagnóstico'
+                                }
+                                onClick={() => void handleToggleValidateDiagnosis(diag)}
+                                disabled={recordBusy}
+                              >
+                                <Icon name="check" size={14} />
+                                {diag.validated ? 'Desvalidar' : 'Validar'}
+                              </button>
+                              <button
+                                type="button"
+                                className="button quiet"
+                                aria-label={`Editar diagnóstico ${diag.description}`}
+                                onClick={() => startEditDiagnosis(diag)}
+                                disabled={recordBusy}
+                              >
+                                Editar
+                              </button>
+                              <button
+                                type="button"
+                                className="button danger-quiet"
+                                aria-label={`Excluir diagnóstico ${diag.description}`}
+                                onClick={() => void handleDeleteDiagnosis(diag.id)}
+                                disabled={recordBusy}
+                              >
+                                <Icon name="trash" size={15} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      !showDiagnosisForm && (
+                        <div className="empty-sub-state">
+                          <p>Nenhum diagnóstico registrado no prontuário.</p>
+                        </div>
+                      )
+                    )}
+                  </section>
+                )}
+
+                {/* --- EXAMS & RESULTS SECTION --- */}
+                {(historySection === 'all' || historySection === 'exams') && (
+                  <section className="history-block" aria-labelledby="exams-heading">
+                    <div className="history-block-header">
+                      <div className="history-block-title-group">
+                        <Icon name="file" size={18} />
+                        <h3 id="exams-heading">Exames Médicos & Laudos</h3>
+                      </div>
+                      {!showExamForm && !showResultForm && (
+                        <button
+                          type="button"
+                          className="button secondary"
+                          onClick={() => {
+                            resetExamForm()
+                            setExamDate(today)
+                            setShowExamForm(true)
+                          }}
+                          disabled={recordBusy}
+                        >
+                          <Icon name="plus" size={15} />
+                          Novo exame
+                        </button>
+                      )}
+                    </div>
+
+                    {showExamForm && (
+                      <div className="sub-form-card history-form-card">
+                        <span className="sub-form-title">
+                          {editingExamId ? 'Editar exame' : 'Solicitar / Registrar exame'}
+                        </span>
+                        <div className="sub-fields-grid">
+                          <div className="field">
+                            <label htmlFor="exam-type">
+                              Tipo de Exame <span className="required-mark">*</span>
+                            </label>
+                            <input
+                              id="exam-type"
+                              type="text"
+                              maxLength={100}
+                              placeholder="Ex.: Hemograma Completo, Tomografia, Raio-X de Tórax, ECG"
+                              value={examType}
+                              onChange={(e) => setExamType(e.target.value)}
+                              required
+                            />
+                          </div>
+                          <div className="field">
+                            <label htmlFor="exam-date">Data da solicitação/realização</label>
+                            <input
+                              id="exam-date"
+                              type="date"
+                              max={today}
+                              value={examDate}
+                              onChange={(e) => setExamDate(e.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        {examError && (
+                          <div className="error-box" role="alert">
+                            {examError}
+                          </div>
+                        )}
+
+                        <div className="sub-form-actions">
+                          <button
+                            type="button"
+                            className="button secondary"
+                            onClick={resetExamForm}
+                            disabled={recordBusy}
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            className="button primary"
+                            onClick={(e) => void handleSaveExam(e)}
+                            disabled={recordBusy}
+                          >
+                            {recordBusy ? (
+                              <span className="spinner" />
+                            ) : (
+                              <Icon name="check" size={16} />
+                            )}
+                            {editingExamId ? 'Atualizar exame' : 'Registrar exame'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {showResultForm && (
+                      <div className="sub-form-card history-form-card result-form-card">
+                        <span className="sub-form-title">
+                          {editingResultId ? 'Editar laudo/resultado' : 'Adicionar laudo/resultado'}
+                        </span>
+                        <div className="field">
+                          <label htmlFor="res-summary">
+                            Resumo / Conclusão do Laudo <span className="required-mark">*</span>
+                          </label>
+                          <input
+                            id="res-summary"
+                            type="text"
+                            maxLength={255}
+                            placeholder="Ex.: Hemoglobina 14.2 g/dL, Leucócitos 7.200/mm³ (Parâmetros normais)"
+                            value={resultSummary}
+                            onChange={(e) => setResultSummary(e.target.value)}
+                            required
+                          />
+                        </div>
+
+                        <div className="sub-fields-grid">
+                          <div className="field">
+                            <label htmlFor="res-date">Data do resultado</label>
+                            <input
+                              id="res-date"
+                              type="date"
+                              max={today}
+                              value={resultDate}
+                              onChange={(e) => setResultDate(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label htmlFor="res-lab">Laboratório / Centro de Diagnóstico</label>
+                            <input
+                              id="res-lab"
+                              type="text"
+                              maxLength={100}
+                              placeholder="Ex.: Laboratório Central Diagnósticos"
+                              value={resultLabName}
+                              onChange={(e) => setResultLabName(e.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="field">
+                          <label htmlFor="res-report">Laudo Completo e Detalhado</label>
+                          <textarea
+                            id="res-report"
+                            rows={4}
+                            placeholder="Descreva o relatório minucioso, valores de referência e observações laboratoriais..."
+                            value={resultReport}
+                            onChange={(e) => setResultReport(e.target.value)}
+                          />
+                        </div>
+
+                        <div className="field-checkbox">
+                          <label htmlFor="res-validated" className="checkbox-label">
+                            <input
+                              id="res-validated"
+                              type="checkbox"
+                              checked={resultValidated}
+                              onChange={(e) => setResultValidated(e.target.checked)}
+                            />
+                            <span>Laudo validado pelo médico responsável</span>
+                          </label>
+                        </div>
+
+                        {resultError && (
+                          <div className="error-box" role="alert">
+                            {resultError}
+                          </div>
+                        )}
+
+                        <div className="sub-form-actions">
+                          <button
+                            type="button"
+                            className="button secondary"
+                            onClick={resetResultForm}
+                            disabled={recordBusy}
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            className="button primary"
+                            onClick={(e) => void handleSaveResult(e)}
+                            disabled={recordBusy}
+                          >
+                            {recordBusy ? (
+                              <span className="spinner" />
+                            ) : (
+                              <Icon name="check" size={16} />
+                            )}
+                            {editingResultId ? 'Atualizar laudo' : 'Salvar laudo'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {record && record.exams.length > 0 ? (
+                      <div className="sub-list" aria-label="Lista de exames">
+                        {record.exams.map((exam) => {
+                          const isExpanded = expandedResults[exam.id] ?? false
+                          return (
+                            <div key={exam.id} className="sub-item-card history-card exam-card">
+                              <div className="exam-card-header">
+                                <div className="sub-item-main">
+                                  <div className="sub-item-title">
+                                    <span>{exam.type}</span>
+                                    <span
+                                      className={`status-pill ${
+                                        exam.hasResult ? 'result-ready-pill' : 'result-waiting-pill'
+                                      }`}
+                                    >
+                                      {exam.hasResult ? 'Com laudo' : 'Aguardando resultado'}
+                                    </span>
+                                  </div>
+                                  <div className="sub-item-meta">
+                                    <span>Solicitação: {formatDate(exam.date)}</span>
+                                    {exam.results.length > 0 && (
+                                      <span>
+                                        {' '}
+                                        • {exam.results.length}{' '}
+                                        {exam.results.length === 1
+                                          ? 'resultado anexado'
+                                          : 'resultados anexados'}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="sub-item-actions">
+                                  <button
+                                    type="button"
+                                    className="button quiet"
+                                    onClick={() => startAddResult(exam.id)}
+                                    disabled={recordBusy}
+                                  >
+                                    <Icon name="plus" size={14} />
+                                    Laudo
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="button quiet"
+                                    aria-label={`Editar exame ${exam.type}`}
+                                    onClick={() => startEditExam(exam)}
+                                    disabled={recordBusy}
+                                  >
+                                    Editar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="button danger-quiet"
+                                    aria-label={`Excluir exame ${exam.type}`}
+                                    onClick={() => void handleDeleteExam(exam.id)}
+                                    disabled={recordBusy}
+                                  >
+                                    <Icon name="trash" size={15} />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Exam results list */}
+                              {exam.results && exam.results.length > 0 && (
+                                <div className="exam-results-container">
+                                  <button
+                                    type="button"
+                                    className="toggle-results-btn"
+                                    onClick={() =>
+                                      setExpandedResults((prev) => ({
+                                        ...prev,
+                                        [exam.id]: !isExpanded,
+                                      }))
+                                    }
+                                  >
+                                    <Icon
+                                      name="chevron"
+                                      size={14}
+                                    />
+                                    <span>
+                                      {isExpanded
+                                        ? 'Ocultar laudo(s)'
+                                        : `Ver laudo (${exam.results.length})`}
+                                    </span>
+                                  </button>
+
+                                  {isExpanded && (
+                                    <div className="results-expanded-list">
+                                      {exam.results.map((res) => (
+                                        <div key={res.id} className="result-detail-box">
+                                          <div className="result-detail-header">
+                                            <div>
+                                              <strong className="result-summary-text">
+                                                {res.resultSummary}
+                                              </strong>
+                                              <div className="result-meta-text">
+                                                <span>Data: {formatDate(res.resultDate)}</span>
+                                                {res.laboratoryName && (
+                                                  <span> • Lab: {res.laboratoryName}</span>
+                                                )}
+                                              </div>
+                                            </div>
+                                            <div className="result-actions-group">
+                                              <span
+                                                className={`status-pill small-pill ${
+                                                  res.validated
+                                                    ? 'validated-pill'
+                                                    : 'pending-pill'
+                                                }`}
+                                              >
+                                                {res.validated ? 'Validado' : 'Pendente'}
+                                              </span>
+                                              <button
+                                                type="button"
+                                                className="button quiet small-btn"
+                                                title={
+                                                  res.validated
+                                                    ? 'Marcar como pendente'
+                                                    : 'Validar laudo'
+                                                }
+                                                onClick={() =>
+                                                  void handleToggleValidateResult(exam.id, res)
+                                                }
+                                                disabled={recordBusy}
+                                              >
+                                                {res.validated ? 'Desvalidar' : 'Validar'}
+                                              </button>
+                                              <button
+                                                type="button"
+                                                className="button quiet small-btn"
+                                                onClick={() => startEditResult(exam.id, res)}
+                                                disabled={recordBusy}
+                                              >
+                                                Editar
+                                              </button>
+                                              <button
+                                                type="button"
+                                                className="button danger-quiet small-btn"
+                                                onClick={() =>
+                                                  void handleDeleteResult(exam.id, res.id)
+                                                }
+                                                disabled={recordBusy}
+                                              >
+                                                <Icon name="trash" size={13} />
+                                              </button>
+                                            </div>
+                                          </div>
+                                          {res.detailedReport && (
+                                            <div className="result-report-body">
+                                              <span className="report-label">
+                                                Laudo detalhado:
+                                              </span>
+                                              <p className="report-content">{res.detailedReport}</p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      !showExamForm &&
+                      !showResultForm && (
+                        <div className="empty-sub-state">
+                          <p>Nenhum exame solicitado para este paciente.</p>
+                        </div>
+                      )
+                    )}
+                  </section>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {error && (
+          <div className="error-box" role="alert">
+            {error}
+          </div>
+        )}
 
         <div className="dialog-footer">
-          <button type="button" className="button secondary" onClick={onClose} disabled={busy}>
+          <button
+            type="button"
+            className="button secondary"
+            onClick={onClose}
+            disabled={busy || recordBusy}
+          >
             Cancelar
           </button>
-          <button type="submit" className="button primary" disabled={busy}>
+          <button type="submit" className="button primary" disabled={busy || recordBusy}>
             {busy ? <span className="spinner" /> : <Icon name="check" size={17} />}
             {busy ? 'Salvando…' : patient ? 'Salvar alterações' : 'Cadastrar paciente'}
           </button>

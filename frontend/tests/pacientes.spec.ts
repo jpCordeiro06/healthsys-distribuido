@@ -216,3 +216,48 @@ test('patient modal supports allergies and vaccines tabs with API integration an
   await dialog.getByRole('button', { name: 'Cancelar' }).click()
   await expect(dialog).not.toBeVisible()
 })
+
+test('patient modal supports medical history tab with diagnoses, exams and results', async ({ page }) => {
+  await page.goto('/login')
+  await page.getByRole('button', { name: 'Explorar demonstração' }).click()
+  await page.getByRole('link', { name: 'Pacientes', exact: true }).click()
+  await expect(page.getByRole('rowheader', { name: /Ana Exemplo/ })).toBeVisible()
+
+  // Open edit dialog
+  await page.getByRole('button', { name: 'Editar Ana Exemplo', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+
+  // Click Histórico médico tab
+  await dialog.getByRole('tab', { name: /Histórico médico/ }).click()
+  await expect(dialog.getByText('Diagnósticos Médicos')).toBeVisible()
+  await expect(dialog.getByText('Exames Médicos & Laudos')).toBeVisible()
+  await expect(dialog.getByText('Rinite Alérgica Perene (CID J30.0)')).toBeVisible()
+  await expect(dialog.getByText('Hemograma Completo com Plaquetas')).toBeVisible()
+
+  // Add new diagnosis
+  await dialog.getByRole('button', { name: 'Novo diagnóstico' }).click()
+  await dialog.getByLabel(/Hipótese Diagnóstica/).fill('Diabetes Mellitus Tipo 2 (CID E11)')
+  await dialog.getByRole('button', { name: 'Salvar diagnóstico' }).click()
+  await expect(dialog.getByText('Diabetes Mellitus Tipo 2 (CID E11)')).toBeVisible()
+
+  // Add new exam
+  await dialog.getByRole('button', { name: 'Novo exame' }).click()
+  await dialog.getByLabel(/Tipo de Exame/).fill('Glicemia em Jejum')
+  await dialog.getByRole('button', { name: 'Registrar exame' }).click()
+  await expect(dialog.getByText('Glicemia em Jejum')).toBeVisible()
+
+  // Filter tabs inside history
+  await dialog.getByRole('button', { name: /^Diagnósticos/ }).click()
+  await expect(dialog.getByText('Exames Médicos & Laudos')).not.toBeVisible()
+  await dialog.getByRole('button', { name: /^Exames & Laudos/ }).click()
+  await expect(dialog.getByText('Exames Médicos & Laudos')).toBeVisible()
+  await expect(dialog.getByText('Diagnósticos Médicos')).not.toBeVisible()
+  await dialog.getByRole('button', { name: 'Visão Geral' }).click()
+  await expect(dialog.getByText('Diagnósticos Médicos')).toBeVisible()
+  await expect(dialog.getByText('Exames Médicos & Laudos')).toBeVisible()
+
+  // Close dialog
+  await dialog.getByRole('button', { name: 'Cancelar' }).click()
+  await expect(dialog).not.toBeVisible()
+})

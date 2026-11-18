@@ -12,6 +12,7 @@ services:
     environment:
       HEALTHSYS_USER_SERVICE_URL: http://user-service:8081
       HEALTHSYS_PATIENT_SERVICE_URL: http://patient-service:8082
+      HEALTHSYS_MEDICAL_RECORD_SERVICE_URL: http://medical-record-service:8083
       HEALTHSYS_TRIAGE_SERVICE_URL: http://triage-service:8084
       HEALTHSYS_NOTIFICATION_SERVICE_URL: http://notification-service:8085
     ports:
@@ -89,8 +90,17 @@ services:
         target: healthsys.security.jwt.public-key
     environment:
       SPRING_CONFIG_IMPORT: configtree:/run/secrets/
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/${MONGO_DATABASE:-healthsys}
+      HEALTHSYS_PATIENT_GRPC_HOST: patient-service
+      HEALTHSYS_PATIENT_GRPC_PORT: 9082
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     ports:
       - '8083:8083'
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      kafka:
+        condition: service_started
     networks:
       - healthsys-network
 

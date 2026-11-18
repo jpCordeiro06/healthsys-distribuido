@@ -262,3 +262,87 @@ export interface NotificationsService {
   updateChannel: (id: string, data: NotificationChannelInput) => Promise<NotificationChannel>
   deleteChannel: (id: string) => Promise<void>
 }
+
+export interface ExamResult {
+  id: string
+  medicalExamId?: string
+  resultDate: string
+  resultSummary: string
+  detailedReport?: string | null
+  laboratoryName?: string | null
+  validated: boolean
+}
+
+export interface ExamResultInput {
+  medicalExamId: string
+  resultDate?: string | null
+  resultSummary: string
+  detailedReport?: string | null
+  laboratoryName?: string | null
+  validated?: boolean
+}
+
+export interface MedicalExam {
+  id: string
+  medicalRecordId: string
+  patientId?: string
+  type: string
+  date: string
+  doctorId?: string | null
+  hasResult: boolean
+  results: ExamResult[]
+}
+
+export interface MedicalExamInput {
+  medicalRecordId: string
+  type: string
+  date?: string | null
+  doctorId?: string | null
+  hasResult?: boolean
+}
+
+export interface Diagnosis {
+  id: string
+  medicalRecordId: string
+  patientId?: string
+  description: string
+  doctorId?: string | null
+  date: string
+  laboratoryName?: string | null
+  validated: boolean
+}
+
+export interface DiagnosisInput {
+  medicalRecordId: string
+  description: string
+  doctorId?: string | null
+  date?: string | null
+  laboratoryName?: string | null
+  validated?: boolean
+}
+
+export interface MedicalRecord {
+  id: string
+  patientId: string
+  createdAt: string
+  updatedAt: string
+  exams: MedicalExam[]
+  diagnoses: Diagnosis[]
+}
+
+export interface MedicalRecordsService {
+  getRecordByPatientId: (patientId: string, signal?: AbortSignal) => Promise<MedicalRecord | null>
+  getRecord: (id: string, signal?: AbortSignal) => Promise<MedicalRecord>
+  createRecord: (patientId: string) => Promise<MedicalRecord>
+  createExam: (data: MedicalExamInput) => Promise<MedicalExam>
+  updateExam: (id: string, data: MedicalExamInput) => Promise<MedicalExam>
+  deleteExam: (id: string) => Promise<void>
+  createExamResult: (data: ExamResultInput) => Promise<ExamResult>
+  updateExamResult: (id: string, data: ExamResultInput) => Promise<ExamResult>
+  validateExamResult: (id: string, validated: boolean) => Promise<ExamResult>
+  deleteExamResult: (id: string) => Promise<void>
+  createDiagnosis: (data: DiagnosisInput) => Promise<Diagnosis>
+  updateDiagnosis: (id: string, data: DiagnosisInput) => Promise<Diagnosis>
+  validateDiagnosis: (id: string, validated: boolean) => Promise<Diagnosis>
+  deleteDiagnosis: (id: string) => Promise<void>
+}

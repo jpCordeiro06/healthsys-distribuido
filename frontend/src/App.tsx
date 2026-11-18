@@ -3,6 +3,7 @@ import { createUsersService } from './services/users'
 import { createPatientsService } from './services/patients'
 import { createTriageService } from './services/triage'
 import { createNotificationsService } from './services/notifications'
+import { createMedicalRecordsService } from './services/records'
 import { PatientsPage } from './pages/PatientsPage'
 import { TriagePage } from './pages/TriagePage'
 import { NotificationsPage } from './pages/NotificationsPage'
@@ -16,9 +17,17 @@ import {
   createDemoPatientsService,
   createDemoTriageService,
   createDemoNotificationsService,
+  createDemoMedicalRecordsService,
   demoEnabled,
 } from './services/demo'
-import type { UsersService, PatientsService, TriageService, NotificationsService, Session } from './types'
+import type {
+  UsersService,
+  PatientsService,
+  TriageService,
+  NotificationsService,
+  MedicalRecordsService,
+  Session,
+} from './types'
 
 function App() {
   const [auth, setAuth] = useState<{
@@ -27,6 +36,7 @@ function App() {
     patients: PatientsService
     triage: TriageService
     notifications: NotificationsService
+    medicalRecords: MedicalRecordsService
   } | null>(null)
   const [notice, setNotice] = useState('')
 
@@ -60,6 +70,7 @@ function App() {
       patients: createPatientsService(session.accessToken),
       triage: createTriageService(session.accessToken),
       notifications: createNotificationsService(session.accessToken),
+      medicalRecords: createMedicalRecordsService(session.accessToken),
     })
   }
 
@@ -72,6 +83,7 @@ function App() {
       patients: createDemoPatientsService(),
       triage: createDemoTriageService(),
       notifications: createDemoNotificationsService(),
+      medicalRecords: createDemoMedicalRecordsService(),
     })
   }
 
@@ -101,7 +113,16 @@ function App() {
           />
           <Route
             path="/patients"
-            element={auth && <PatientsPage session={auth.session} service={auth.patients} onExpired={expireSession} />}
+            element={
+              auth && (
+                <PatientsPage
+                  session={auth.session}
+                  service={auth.patients}
+                  recordsService={auth.medicalRecords}
+                  onExpired={expireSession}
+                />
+              )
+            }
           />
           <Route
             path="/triage"
