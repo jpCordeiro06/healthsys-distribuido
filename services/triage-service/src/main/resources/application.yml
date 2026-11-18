@@ -16,6 +16,11 @@ spring:
 server:
   port: ${SERVER_PORT:8084}
 
+grpc:
+  patient-service:
+    host: ${HEALTHSYS_PATIENT_GRPC_HOST:localhost}
+    port: ${HEALTHSYS_PATIENT_GRPC_PORT:9082}
+
 management:
   endpoints:
     web:

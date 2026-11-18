@@ -5,6 +5,7 @@ import br.edu.healthsys.triage.domain.RiskClassification;
 import br.edu.healthsys.triage.domain.Screening;
 import br.edu.healthsys.triage.domain.ScreeningStatus;
 import br.edu.healthsys.triage.domain.Symptom;
+import br.edu.healthsys.triage.grpc.PatientGrpcClient;
 import br.edu.healthsys.triage.repository.ScreeningRepository;
 import java.util.List;
 import java.util.Set;
@@ -21,15 +22,18 @@ public class ScreeningService {
     private final ScreeningRepository screeningRepository;
     private final RiskClassificationService riskClassificationService;
     private final SymptomService symptomService;
+    private final PatientGrpcClient patientGrpcClient;
 
     public ScreeningService(
             ScreeningRepository screeningRepository,
             RiskClassificationService riskClassificationService,
-            SymptomService symptomService
+            SymptomService symptomService,
+            PatientGrpcClient patientGrpcClient
     ) {
         this.screeningRepository = screeningRepository;
         this.riskClassificationService = riskClassificationService;
         this.symptomService = symptomService;
+        this.patientGrpcClient = patientGrpcClient;
     }
 
     public List<Screening> list(UUID patientId, ScreeningStatus status) {
@@ -46,6 +50,8 @@ public class ScreeningService {
 
     @Transactional
     public Screening create(ScreeningRequest request) {
+        patientGrpcClient.validatePatientExists(request.patientId());
+
         RiskClassification riskClassification = null;
         if (request.riskClassificationId() != null) {
             riskClassification = riskClassificationService.getById(request.riskClassificationId());

@@ -66,6 +66,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - '8082:8082'
+      - '9082:9082'
     depends_on:
       postgres:
         condition: service_healthy
@@ -110,6 +111,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      HEALTHSYS_PATIENT_GRPC_HOST: patient-service
+      HEALTHSYS_PATIENT_GRPC_PORT: 9082
     ports:
       - '8084:8084'
     depends_on:

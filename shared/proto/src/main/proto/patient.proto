@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package br.edu.healthsys.patient.grpc;
+
+option java_multiple_files = true;
+option java_package = "br.edu.healthsys.patient.grpc";
+option java_outer_classname = "PatientProto";
+
+service PatientGrpcService {
+    rpc GetPatient (GetPatientRequest) returns (PatientResponseProto);
+    rpc CheckPatientExists (CheckPatientExistsRequest) returns (CheckPatientExistsResponse);
+}
+
+message GetPatientRequest {
+    string id = 1;
+}
+
+message CheckPatientExistsRequest {
+    string id = 1;
+}
+
+message CheckPatientExistsResponse {
+    bool exists = 1;
+}
+
+message PatientResponseProto {
+    string id = 1;
+    string nome = 2;
+    string cpf = 3;
+    string data_nascimento = 4;
+    string sexo = 5;
+    string telefone = 6;
+}

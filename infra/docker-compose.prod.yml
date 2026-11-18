@@ -113,6 +113,8 @@ services:
       target: production
     init: true
     environment:
+      HEALTHSYS_PATIENT_GRPC_HOST: patient-service
+      HEALTHSYS_PATIENT_GRPC_PORT: 9082
       SPRING_PROFILES_ACTIVE: production
       SPRING_CONFIG_IMPORT: configtree:/run/secrets/
       SERVER_ERROR_INCLUDE_STACKTRACE: never

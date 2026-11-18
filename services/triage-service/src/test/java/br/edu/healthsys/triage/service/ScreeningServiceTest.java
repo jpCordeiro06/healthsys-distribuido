@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -12,6 +13,7 @@ import br.edu.healthsys.triage.domain.RiskClassification;
 import br.edu.healthsys.triage.domain.Screening;
 import br.edu.healthsys.triage.domain.ScreeningStatus;
 import br.edu.healthsys.triage.domain.Symptom;
+import br.edu.healthsys.triage.grpc.PatientGrpcClient;
 import br.edu.healthsys.triage.repository.ScreeningRepository;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -22,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,11 +39,14 @@ class ScreeningServiceTest {
     @Mock
     private SymptomService symptomService;
 
+    @Mock
+    private PatientGrpcClient patientGrpcClient;
+
     private ScreeningService screeningService;
 
     @BeforeEach
     void setUp() {
-        screeningService = new ScreeningService(screeningRepository, riskClassificationService, symptomService);
+        screeningService = new ScreeningService(screeningRepository, riskClassificationService, symptomService, patientGrpcClient);
     }
 
     @Test
@@ -72,7 +78,27 @@ class ScreeningServiceTest {
         assertEquals(patientId, result.getPatientId());
         assertEquals(riskClassification, result.getRiskClassification());
         assertEquals(1, result.getSymptoms().size());
+        verify(patientGrpcClient).validatePatientExists(patientId);
         verify(screeningRepository).save(any(Screening.class));
+    }
+
+    @Test
+    void shouldThrowNotFoundWhenCreatingScreeningForNonExistentPatient() {
+        UUID patientId = UUID.randomUUID();
+        ScreeningRequest request = new ScreeningRequest(
+                patientId,
+                null,
+                null,
+                ScreeningStatus.AGUARDANDO,
+                LocalDateTime.now(),
+                "Paciente inexistente",
+                null
+        );
+
+        doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Paciente nao encontrado."))
+                .when(patientGrpcClient).validatePatientExists(patientId);
+
+        assertThrows(ResponseStatusException.class, () -> screeningService.create(request));
     }
 
     @Test

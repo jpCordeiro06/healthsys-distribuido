@@ -33,6 +33,11 @@ public class Patient {
     protected Patient() {}
 
     public Patient(String nome, String cpf, LocalDate dataNascimento, String sexo, String telefone) {
+        this(null, nome, cpf, dataNascimento, sexo, telefone);
+    }
+
+    public Patient(UUID id, String nome, String cpf, LocalDate dataNascimento, String sexo, String telefone) {
+        this.id = id;
         this.nome = nome;
         this.cpf = cpf;
         this.dataNascimento = dataNascimento;
