@@ -18,6 +18,10 @@ spring:
               uri: ${HEALTHSYS_TRIAGE_SERVICE_URL:http://localhost:8084}
               predicates:
                 - Path=/api/v1/screenings,/api/v1/screenings/**,/api/v1/risk-classifications,/api/v1/risk-classifications/**,/api/v1/symptoms,/api/v1/symptoms/**
+            - id: notification-service
+              uri: ${HEALTHSYS_NOTIFICATION_SERVICE_URL:http://localhost:8085}
+              predicates:
+                - Path=/api/v1/notifications,/api/v1/notifications/**,/api/v1/notification-channels,/api/v1/notification-channels/**,/ws/notificacoes,/ws/notificacoes/**
           globalcors:
             add-to-simple-url-handler-mapping: true
             cors-configurations:

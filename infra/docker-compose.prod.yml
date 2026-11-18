@@ -10,6 +10,8 @@ services:
     environment:
       HEALTHSYS_USER_SERVICE_URL: http://user-service:8081
       HEALTHSYS_PATIENT_SERVICE_URL: http://patient-service:8082
+      HEALTHSYS_TRIAGE_SERVICE_URL: http://triage-service:8084
+      HEALTHSYS_NOTIFICATION_SERVICE_URL: http://notification-service:8085
       SPRING_PROFILES_ACTIVE: production
       SPRING_CONFIG_IMPORT: configtree:/run/secrets/
       SERVER_ERROR_INCLUDE_STACKTRACE: never
@@ -113,13 +115,22 @@ services:
       target: production
     init: true
     environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       HEALTHSYS_PATIENT_GRPC_HOST: patient-service
       HEALTHSYS_PATIENT_GRPC_PORT: 9082
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SPRING_PROFILES_ACTIVE: production
       SPRING_CONFIG_IMPORT: configtree:/run/secrets/
       SERVER_ERROR_INCLUDE_STACKTRACE: never
       SERVER_ERROR_INCLUDE_MESSAGE: never
       JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=60.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
     networks:
     - healthsys-network
     restart: unless-stopped
@@ -135,11 +146,20 @@ services:
       target: production
     init: true
     environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SPRING_PROFILES_ACTIVE: production
       SPRING_CONFIG_IMPORT: configtree:/run/secrets/
       SERVER_ERROR_INCLUDE_STACKTRACE: never
       SERVER_ERROR_INCLUDE_MESSAGE: never
       JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=60.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
     networks:
     - healthsys-network
     restart: unless-stopped

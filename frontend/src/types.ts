@@ -182,3 +182,83 @@ export interface TriageService {
   listRiskClassifications: (signal?: AbortSignal) => Promise<RiskClassification[]>
   listSymptoms: (signal?: AbortSignal) => Promise<Symptom[]>
 }
+
+export type NotificationType =
+  | 'SYSTEM'
+  | 'APPOINTMENT'
+  | 'EXAM_RESULT'
+  | 'TRIAGE_ALERT'
+  | 'EMERGENCY'
+  | 'GENERAL'
+  | 'REMINDER'
+
+export const notificationTypeLabels: Record<NotificationType, string> = {
+  SYSTEM: 'Sistema',
+  APPOINTMENT: 'Agendamento',
+  EXAM_RESULT: 'Resultado de Exame',
+  TRIAGE_ALERT: 'Alerta de Triagem',
+  EMERGENCY: 'Emergência',
+  GENERAL: 'Geral',
+  REMINDER: 'Lembrete',
+}
+
+export interface NotificationChannel {
+  id: string
+  name: string
+  description: string
+  active: boolean
+}
+
+export interface NotificationChannelInput {
+  name: string
+  description?: string
+  active?: boolean
+}
+
+export interface Notification {
+  id: string
+  senderId?: string | null
+  receiverId: string
+  type: NotificationType
+  title: string
+  message: string
+  sentAt: string
+  readAt?: string | null
+  isRead: boolean
+  isUrgent: boolean
+  channel?: NotificationChannel | null
+}
+
+export interface NotificationInput {
+  senderId?: string | null
+  receiverId: string
+  type?: NotificationType
+  title: string
+  message: string
+  isUrgent?: boolean
+  notificationChannelId?: string | null
+}
+
+export interface NotificationFilter {
+  receiverId?: string
+  senderId?: string
+  isRead?: boolean
+  isUrgent?: boolean
+  type?: NotificationType
+  channelId?: string
+}
+
+export interface NotificationsService {
+  listNotifications: (filter?: NotificationFilter, signal?: AbortSignal) => Promise<Notification[]>
+  getNotification: (id: string, signal?: AbortSignal) => Promise<Notification>
+  getUnreadCount: (receiverId: string, signal?: AbortSignal) => Promise<number>
+  createNotification: (data: NotificationInput) => Promise<Notification>
+  markAsRead: (id: string) => Promise<Notification>
+  markAsUnread: (id: string) => Promise<Notification>
+  deleteNotification: (id: string) => Promise<void>
+  listChannels: (active?: boolean, signal?: AbortSignal) => Promise<NotificationChannel[]>
+  getChannel: (id: string, signal?: AbortSignal) => Promise<NotificationChannel>
+  createChannel: (data: NotificationChannelInput) => Promise<NotificationChannel>
+  updateChannel: (id: string, data: NotificationChannelInput) => Promise<NotificationChannel>
+  deleteChannel: (id: string) => Promise<void>
+}

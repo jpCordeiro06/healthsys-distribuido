@@ -12,6 +12,12 @@ import type {
   Screening,
   ScreeningStatus,
   TriageService,
+  Notification,
+  NotificationChannel,
+  NotificationChannelInput,
+  NotificationFilter,
+  NotificationInput,
+  NotificationsService,
 } from '../types'
 
 export const demoEnabled = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO === 'true'
@@ -471,5 +477,237 @@ export function createDemoTriageService(): TriageService {
     },
     listRiskClassifications: async () => [...riskClassifications],
     listSymptoms: async () => [...symptoms],
+  }
+}
+
+export function createDemoNotificationsService(): NotificationsService {
+  const channels: NotificationChannel[] = [
+    { id: 'chan-1', name: 'Email', description: 'Envio por correio eletrônico', active: true },
+    { id: 'chan-2', name: 'SMS', description: 'Mensagem de texto para celular', active: true },
+    { id: 'chan-3', name: 'WebSocket', description: 'Notificação em tempo real no navegador', active: true },
+    { id: 'chan-4', name: 'Push', description: 'Notificação push em aplicativo móvel', active: true },
+    { id: 'chan-5', name: 'WhatsApp', description: 'Mensagem via WhatsApp Business API', active: true },
+  ]
+
+  const notifications: Notification[] = [
+    {
+      id: 'demo-notif-1',
+      senderId: null,
+      receiverId: 'demo-user-1',
+      type: 'TRIAGE_ALERT',
+      title: 'ALERTA DE RISCO - Paciente Prioritário (LARANJA)',
+      message: 'Paciente Ana Exemplo classificado com prioridade alta/crítica (MUITO URGENTE). Risco LARANJA.',
+      sentAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+      readAt: null,
+      isRead: false,
+      isUrgent: true,
+      channel: channels[2], // WebSocket
+    },
+    {
+      id: 'demo-notif-2',
+      senderId: 'demo-user-2',
+      receiverId: 'demo-user-1',
+      type: 'EXAM_RESULT',
+      title: 'Novo Resultado de Exame Disponível',
+      message: 'O exame de Hemograma Completo do paciente Bruno Exemplo foi processado e registrado.',
+      sentAt: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
+      readAt: null,
+      isRead: false,
+      isUrgent: false,
+      channel: channels[0], // Email
+    },
+    {
+      id: 'demo-notif-3',
+      senderId: null,
+      receiverId: 'demo-user-1',
+      type: 'SYSTEM',
+      title: 'Manutenção Programada do Sistema',
+      message: 'O subsistema de prontuários passará por atualização preventiva no próximo domingo às 02h.',
+      sentAt: new Date(Date.now() - 180 * 60 * 1000).toISOString(),
+      readAt: new Date(Date.now() - 120 * 60 * 1000).toISOString(),
+      isRead: true,
+      isUrgent: false,
+      channel: channels[2], // WebSocket
+    },
+    {
+      id: 'demo-notif-4',
+      senderId: 'demo-user-3',
+      receiverId: 'demo-patient-1',
+      type: 'APPOINTMENT',
+      title: 'Confirmação de Consulta Médica',
+      message: 'Sua consulta médica com Dr. Marina foi confirmada para amanhã às 14:30.',
+      sentAt: new Date(Date.now() - 360 * 60 * 1000).toISOString(),
+      readAt: new Date(Date.now() - 300 * 60 * 1000).toISOString(),
+      isRead: true,
+      isUrgent: false,
+      channel: channels[1], // SMS
+    },
+  ]
+
+  return {
+    listNotifications: async (filter?: NotificationFilter) => {
+      let result = [...notifications]
+      if (filter?.receiverId) {
+        result = result.filter((n) => n.receiverId === filter.receiverId)
+      }
+      if (filter?.senderId) {
+        result = result.filter((n) => n.senderId === filter.senderId)
+      }
+      if (filter?.isRead !== undefined) {
+        result = result.filter((n) => n.isRead === filter.isRead)
+      }
+      if (filter?.isUrgent !== undefined) {
+        result = result.filter((n) => n.isUrgent === filter.isUrgent)
+      }
+      if (filter?.type) {
+        result = result.filter((n) => n.type === filter.type)
+      }
+      if (filter?.channelId) {
+        result = result.filter((n) => n.channel?.id === filter.channelId)
+      }
+      return result.sort(
+        (a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime(),
+      )
+    },
+
+    getNotification: async (id: string) => {
+      const notif = notifications.find((n) => n.id === id)
+      if (!notif) throw new ApiError('Notificação não encontrada.', 404)
+      return notif
+    },
+
+    getUnreadCount: async (receiverId: string) => {
+      return notifications.filter((n) => n.receiverId === receiverId && !n.isRead).length
+    },
+
+    createNotification: async (data: NotificationInput) => {
+      if (!data.receiverId) {
+        throw new ApiError('Destinatário é obrigatório.', 400, {
+          receiverId: ['Selecione ou informe um destinatário.'],
+        })
+      }
+      if (!data.title?.trim()) {
+        throw new ApiError('Título é obrigatório.', 400, {
+          title: ['Informe o título da notificação.'],
+        })
+      }
+      if (!data.message?.trim()) {
+        throw new ApiError('Mensagem é obrigatória.', 400, {
+          message: ['Informe o conteúdo da notificação.'],
+        })
+      }
+
+      const channel = data.notificationChannelId
+        ? channels.find((c) => c.id === data.notificationChannelId) ?? null
+        : null
+
+      const notif: Notification = {
+        id: crypto.randomUUID(),
+        senderId: data.senderId ?? null,
+        receiverId: data.receiverId,
+        type: data.type ?? 'GENERAL',
+        title: data.title.trim(),
+        message: data.message.trim(),
+        sentAt: new Date().toISOString(),
+        readAt: null,
+        isRead: false,
+        isUrgent: data.isUrgent ?? false,
+        channel,
+      }
+      notifications.unshift(notif)
+      return notif
+    },
+
+    markAsRead: async (id: string) => {
+      const index = notifications.findIndex((n) => n.id === id)
+      if (index < 0) throw new ApiError('Notificação não encontrada.', 404)
+      notifications[index] = {
+        ...notifications[index],
+        isRead: true,
+        readAt: new Date().toISOString(),
+      }
+      return notifications[index]
+    },
+
+    markAsUnread: async (id: string) => {
+      const index = notifications.findIndex((n) => n.id === id)
+      if (index < 0) throw new ApiError('Notificação não encontrada.', 404)
+      notifications[index] = {
+        ...notifications[index],
+        isRead: false,
+        readAt: null,
+      }
+      return notifications[index]
+    },
+
+    deleteNotification: async (id: string) => {
+      const index = notifications.findIndex((n) => n.id === id)
+      if (index < 0) throw new ApiError('Notificação não encontrada.', 404)
+      notifications.splice(index, 1)
+    },
+
+    listChannels: async (active?: boolean) => {
+      if (active !== undefined) {
+        return channels.filter((c) => c.active === active)
+      }
+      return [...channels]
+    },
+
+    getChannel: async (id: string) => {
+      const channel = channels.find((c) => c.id === id)
+      if (!channel) throw new ApiError('Canal de notificação não encontrado.', 404)
+      return channel
+    },
+
+    createChannel: async (data: NotificationChannelInput) => {
+      if (!data.name?.trim()) {
+        throw new ApiError('Nome do canal é obrigatório.', 400, {
+          name: ['Informe o nome do canal.'],
+        })
+      }
+      if (channels.some((c) => c.name.toLowerCase() === data.name.trim().toLowerCase())) {
+        throw new ApiError('Já existe um canal com este nome.', 409, {
+          name: ['Nome de canal já cadastrado.'],
+        })
+      }
+      const channel: NotificationChannel = {
+        id: crypto.randomUUID(),
+        name: data.name.trim(),
+        description: data.description?.trim() ?? '',
+        active: data.active ?? true,
+      }
+      channels.push(channel)
+      return channel
+    },
+
+    updateChannel: async (id: string, data: NotificationChannelInput) => {
+      const index = channels.findIndex((c) => c.id === id)
+      if (index < 0) throw new ApiError('Canal de notificação não encontrado.', 404)
+      if (
+        data.name &&
+        channels.some(
+          (c) => c.id !== id && c.name.toLowerCase() === data.name.trim().toLowerCase(),
+        )
+      ) {
+        throw new ApiError('Já existe um canal com este nome.', 409, {
+          name: ['Nome de canal já cadastrado.'],
+        })
+      }
+      const updated: NotificationChannel = {
+        ...channels[index],
+        name: data.name ? data.name.trim() : channels[index].name,
+        description:
+          data.description !== undefined ? data.description.trim() : channels[index].description,
+        active: data.active !== undefined ? data.active : channels[index].active,
+      }
+      channels[index] = updated
+      return updated
+    },
+
+    deleteChannel: async (id: string) => {
+      const index = channels.findIndex((c) => c.id === id)
+      if (index < 0) throw new ApiError('Canal de notificação não encontrado.', 404)
+      channels.splice(index, 1)
+    },
   }
 }

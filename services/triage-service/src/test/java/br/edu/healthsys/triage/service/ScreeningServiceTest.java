@@ -13,6 +13,7 @@ import br.edu.healthsys.triage.domain.RiskClassification;
 import br.edu.healthsys.triage.domain.Screening;
 import br.edu.healthsys.triage.domain.ScreeningStatus;
 import br.edu.healthsys.triage.domain.Symptom;
+import br.edu.healthsys.triage.event.TriageEventProducer;
 import br.edu.healthsys.triage.grpc.PatientGrpcClient;
 import br.edu.healthsys.triage.repository.ScreeningRepository;
 import java.time.LocalDateTime;
@@ -42,11 +43,20 @@ class ScreeningServiceTest {
     @Mock
     private PatientGrpcClient patientGrpcClient;
 
+    @Mock
+    private TriageEventProducer triageEventProducer;
+
     private ScreeningService screeningService;
 
     @BeforeEach
     void setUp() {
-        screeningService = new ScreeningService(screeningRepository, riskClassificationService, symptomService, patientGrpcClient);
+        screeningService = new ScreeningService(
+                screeningRepository,
+                riskClassificationService,
+                symptomService,
+                patientGrpcClient,
+                triageEventProducer
+        );
     }
 
     @Test

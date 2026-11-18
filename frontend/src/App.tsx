@@ -2,8 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { createUsersService } from './services/users'
 import { createPatientsService } from './services/patients'
 import { createTriageService } from './services/triage'
+import { createNotificationsService } from './services/notifications'
 import { PatientsPage } from './pages/PatientsPage'
 import { TriagePage } from './pages/TriagePage'
+import { NotificationsPage } from './pages/NotificationsPage'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { AppLayout } from './components/AppLayout'
 import { LoginPage } from './pages/LoginPage'
@@ -13,9 +15,10 @@ import {
   createDemoUsersService,
   createDemoPatientsService,
   createDemoTriageService,
+  createDemoNotificationsService,
   demoEnabled,
 } from './services/demo'
-import type { UsersService, PatientsService, TriageService, Session } from './types'
+import type { UsersService, PatientsService, TriageService, NotificationsService, Session } from './types'
 
 function App() {
   const [auth, setAuth] = useState<{
@@ -23,6 +26,7 @@ function App() {
     users: UsersService
     patients: PatientsService
     triage: TriageService
+    notifications: NotificationsService
   } | null>(null)
   const [notice, setNotice] = useState('')
 
@@ -55,6 +59,7 @@ function App() {
       users: createUsersService(session.accessToken),
       patients: createPatientsService(session.accessToken),
       triage: createTriageService(session.accessToken),
+      notifications: createNotificationsService(session.accessToken),
     })
   }
 
@@ -66,6 +71,7 @@ function App() {
       users: createDemoUsersService(),
       patients: createDemoPatientsService(),
       triage: createDemoTriageService(),
+      notifications: createDemoNotificationsService(),
     })
   }
 
@@ -104,6 +110,20 @@ function App() {
                 <TriagePage
                   session={auth.session}
                   service={auth.triage}
+                  patientsService={auth.patients}
+                  onExpired={expireSession}
+                />
+              )
+            }
+          />
+          <Route
+            path="/notifications"
+            element={
+              auth && (
+                <NotificationsPage
+                  session={auth.session}
+                  service={auth.notifications}
+                  usersService={auth.users}
                   patientsService={auth.patients}
                   onExpired={expireSession}
                 />

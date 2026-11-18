@@ -10,7 +10,14 @@ interface Props {
 
 export function AppLayout({ session, onSignOut }: Props) {
   const { pathname } = useLocation()
-  const title = pathname === '/patients' ? 'Pacientes' : pathname === '/triage' ? 'Triagem' : 'Usuários'
+  const title =
+    pathname === '/patients'
+      ? 'Pacientes'
+      : pathname === '/triage'
+        ? 'Triagem'
+        : pathname === '/notifications'
+          ? 'Notificações'
+          : 'Usuários'
   return (
     <div className="app-layout">
       <a
@@ -40,6 +47,11 @@ export function AppLayout({ session, onSignOut }: Props) {
           <NavLink to="/triage" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
             <Icon name="activity" />
             <span>Triagem</span>
+            <Icon name="chevron" size={15} />
+          </NavLink>
+          <NavLink to="/notifications" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+            <Icon name="bell" />
+            <span>Notificações</span>
             <Icon name="chevron" size={15} />
           </NavLink>
         </nav>

@@ -13,6 +13,7 @@ services:
       HEALTHSYS_USER_SERVICE_URL: http://user-service:8081
       HEALTHSYS_PATIENT_SERVICE_URL: http://patient-service:8082
       HEALTHSYS_TRIAGE_SERVICE_URL: http://triage-service:8084
+      HEALTHSYS_NOTIFICATION_SERVICE_URL: http://notification-service:8085
     ports:
       - '8080:8080'
     networks:
@@ -113,11 +114,14 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       HEALTHSYS_PATIENT_GRPC_HOST: patient-service
       HEALTHSYS_PATIENT_GRPC_PORT: 9082
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     ports:
       - '8084:8084'
     depends_on:
       postgres:
         condition: service_healthy
+      kafka:
+        condition: service_started
     networks:
       - healthsys-network
 
@@ -136,8 +140,17 @@ services:
         target: healthsys.security.jwt.public-key
     environment:
       SPRING_CONFIG_IMPORT: configtree:/run/secrets/
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     ports:
       - '8085:8085'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
     networks:
       - healthsys-network
 
