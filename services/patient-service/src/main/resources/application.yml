@@ -14,10 +14,10 @@ spring:
         format_sql: true
   cache:
     type: redis
-    data:
-      redis:
-        host: localhost
-        port: 6379
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:${REDIS_HOST:redis}}
+      port: ${SPRING_DATA_REDIS_PORT:${REDIS_PORT:6379}}
 
 server:
   port: ${SERVER_PORT:8082}
